@@ -1,4 +1,8 @@
 #include "main.h"
+#include <math.h>
+#include "EZ-Template/util.hpp"
+#include "pros/misc.h"
+#include "subsystems.hpp"
 
 /////
 // For installation, upgrading, documentations, and tutorials, check out our website!
@@ -72,6 +76,7 @@ void initialize() {
   //     {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
   //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
   //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
+      {"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
    });
 
 
@@ -211,7 +216,7 @@ void ez_template_extras() {
       chassis.pid_tuner_toggle();
 
     // Trigger the selected autonomous routine
-    if (master.get_digital(DIGITAL_B) && master.get_digital(DIGITAL_DOWN)) {
+    if (master.get_digital(DIGITAL_UP) ) {
       pros::motor_brake_mode_e_t preference = chassis.drive_brake_get();
       autonomous();
       chassis.drive_brake_set(preference);
@@ -243,18 +248,39 @@ void ez_template_extras() {
  */
 void opcontrol() {
   // This is preference to what you like to drive on
+  
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
 
   while (true) {
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
+    
+    double Angle = IMU.get_heading();  // Get the current angle of the IMU
+    double Radians = (M_PI / 180) * Angle;  // Convert the angle to radians
+    
+    int forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);   // Forward/Backward
+    int strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);   // Left/Right
+    int rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);  // Rotation
+
+    int tempforward = forward * cos(Radians) + strafe * sin(Radians);  // Calculate forward component
+    int tempstrafe = -forward * sin(Radians) + strafe * cos(Radians);  // Calculate strafe component
+
+    // Holonomic drive calculation (X-drive)
+    int fl = tempforward + tempstrafe + rotate;
+    int fr = tempforward - tempstrafe - rotate;
+    int bl = tempforward - tempstrafe + rotate;
+    int br = tempforward + tempstrafe - rotate;
+
+    // Set motor power
+    setDrivePower(fl, fr, bl, br);
+    
 
     //chassis.opcontrol_tank();  // Tank control
-     chassis.opcontrol_arcade_standard(ez::SPLIT);   // Standard split arcade
+     //chassis.opcontrol_arcade_standard(ez::SPLIT);   // Standard split arcade
     // chassis.opcontrol_arcade_standard(ez::SINGLE);  // Standard single arcade
     // chassis.opcontrol_arcade_flipped(ez::SPLIT);    // Flipped split arcade
     // chassis.opcontrol_arcade_flipped(ez::SINGLE);   // Flipped single arcade
-
+ 
     // . . .
     // Put more user control code here!
     // . . .

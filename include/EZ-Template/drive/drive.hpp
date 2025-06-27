@@ -979,17 +979,7 @@ class Drive {
    */
   void opcontrol_arcade_flipped(e_type stick_type);
 
- /**
-   * Sets the chassis to controller joysticks using standard arcade control, where left stick is fwd/rev left/right.
-   * Run in usercontrol.
-   *
-   * This passes the controller through the curve functions, but is disabled by default.
-   * Use opcontrol_curve_buttons_toggle() to enable it.
-   *
-   * \param stick_type
-   *        ez::SINGLE or ez::SPLIT control
-   */
-  void opcontrol_arcade_X_drive(e_type stick_type);
+
 
   /**
    * Initializes left and right curves with the SD card, recommended to run in initialize().
