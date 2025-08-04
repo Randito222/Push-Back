@@ -20,3 +20,8 @@ void setDrivePower(int fl, int fr, int bl, int br) {
   Back_Right_1.move(br);
   Back_Right_2.move(br);
 } 
+
+void IntakeSpin() {
+  // Spin the intake motor
+  Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
+}
