@@ -12,10 +12,10 @@
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
-    {19, 20, 18,10},     // Left Chassis Ports (negative port will reverse it!)
-    {-13, -12, -15, -2},  // Right Chassis Ports (negative port will reverse it!)
+    {17, -18, 15,-14},     // Left Chassis Ports (negative port will reverse it!)
+    {19, -20, 12, -11},  // Right Chassis Ports (negative port will reverse it!)
 
-    9,      // IMU Port
+    -6,      // IMU Port
     4.125,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343);   // Wheel RPM = cartridge * (motor gear / wheel gear)
 
@@ -284,6 +284,14 @@ void opcontrol() {
     // . . .
     // Put more user control code here!
     // . . .
+
+    if(master.get_digital(DIGITAL_R1)) {
+      Intake.move_velocity(200);  // Spin the intake motor when R1 is pressed
+    }else if(master.get_digital(DIGITAL_R2)) {
+      Intake.move_velocity(-200);  // Spin the intake motor in reverse when R2 is pressed
+    } else  {
+      Intake.move_velocity(0);  // Stop the intake motor when R2 is pressed
+    }
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
