@@ -1,4 +1,5 @@
 #include "autons.hpp"
+#include "XDrive_PID.hpp"
 #include "main.h"
 #include "subsystems.hpp"
 
@@ -23,6 +24,7 @@ void default_constants() {
   chassis.pid_swing_constants_set(6.0, 0.0, 65.0);           // Swing constants
   chassis.pid_odom_angular_constants_set(6.5, 0.0, 52.5);    // Angular control for odom motions
   chassis.pid_odom_boomerang_constants_set(5.8, 0.0, 32.5);  // Angular control for boomerang motions
+
 
   // Exit conditions
   chassis.pid_turn_exit_condition_set(90_ms, 3_deg, 250_ms, 7_deg, 500_ms, 500_ms);
@@ -385,4 +387,49 @@ void Tuning_PID(){
 
   // chassis.pid_turn_set(90_deg, TURN_SPEED);
   // chassis.pid_wait();
+}
+
+void AutonTesting(){
+
+  // === MOVE 1: Forward 36 inches ===
+  pros::Task move1([]() {
+    x_drive_pid_task(36.0, 0.0, 0.0); // Move to (36, 0) facing 0 degrees
+  });
+
+  pid_wait_until_distance(20.0); // Wait until within 20 inches
+  Intake.move(120); // Start intake early
+  pros::delay(1000);
+  Intake.move_voltage(0); // Stop intake
+
+  move1.join(); // Wait until move 1 is fully done
+
+
+  // === MOVE 2: Strafe right 24 inches ===
+  pros::Task move2([]() {
+    x_drive_pid_task(36.0, 24.0, 0.0); // Move to (36, 24)
+  });
+
+  pid_wait_until_distance(10.0); // Wait until close
+  Intake.move(120); // Spin up flywheel
+
+  move2.join();
+
+
+  // === MOVE 3: Turn in place (rotate to 90 degrees) ===
+  pros::Task rotate([]() {
+    x_drive_pid_task(36.0, 24.0, 90.0); // Stay in place, rotate to 90 degrees
+  });
+
+  rotate.join();
+  Intake.move_voltage(0); // Turn off flywheel
+
+
+  // === MOVE 4: Move backward to start ===
+  pros::Task move4([]() {
+    x_drive_pid_task(0.0, 0.0, 90.0); // Return to (0, 0) still facing 90 degrees
+  });
+
+  pid_wait_until_distance(15.0);
+  move4.join();
+  
 }
