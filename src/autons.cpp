@@ -397,7 +397,7 @@ void AutonTesting(){
   });
 
   pid_wait_until_distance(20.0); // Wait until within 20 inches
-  Intake.move_voltage(12000); // Start intake early
+  Intake.move(120); // Start intake early
   pros::delay(1000);
   Intake.move_voltage(0); // Stop intake
 
@@ -410,7 +410,7 @@ void AutonTesting(){
   });
 
   pid_wait_until_distance(10.0); // Wait until close
-  Intake.move_voltage(12700); // Spin up flywheel
+  Intake.move(120); // Spin up flywheel
 
   move2.join();
 
