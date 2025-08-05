@@ -37,8 +37,7 @@ inline pros::MotorGroup Right_side({-13, -12, -15, -2}); // Right side motor gro
 Sensors
 */
 
-inline pros::Imu IMU(6); // IMU sensor on port 9
-
+inline pros::Imu Inertial(6); // IMU sensor on port 6
 
 // inline pros::Motor intake(1);
 // inline pros::adi::DigitalIn limit_switch('A');
