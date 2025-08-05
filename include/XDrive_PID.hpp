@@ -1,26 +1,45 @@
-class PID{
-
-    Public:
+#pragma once
+class RPID {
+public:
     double kP, kI, kD;
-    double integral;
-    double prevError;
-    double output;
+    double integral = 0;
+    double prevError = 0;
+    double output = 0;
 
-    PID(double p, double i, double d) : kP(p), kI(i), kD(d) {}
+    // Optional: integral cap to prevent wind-up
+    double integralLimit = 1000;
 
-  double calculate(double error) {
-    integral += error;
-    double derivative = error - prevError;
-    prevError = error;
-    output = (kP * error) + (kI * integral) + (kD * derivative);
-    return output;
-  }
+    RPID(double p, double i, double d) : kP(p), kI(i), kD(d) {}
 
-  void reset() {
-    integral = 0;
-    prevError = 0;
-  }
-    
-}
+    double calculate(double error) {
+        // Prevent integral wind-up
+        integral += error;
+        if (integral > integralLimit) integral = integralLimit;
+        if (integral < -integralLimit) integral = -integralLimit;
 
-void x_drive_pid_task();
+        double derivative = error - prevError;
+        prevError = error;
+
+        output = (kP * error) + (kI * integral) + (kD * derivative);
+        return output;
+    }
+
+    double calculateWithTarget(double target, double current) {
+        double error = target - current;
+        return calculate(error);
+    }
+
+    void reset() {
+        integral = 0;
+        prevError = 0;
+    }
+
+    void setGains(double p, double i, double d) {
+        kP = p;
+        kI = i;
+        kD = d;
+    }
+};
+
+void pid_wait_until_distance(double threshold);
+void x_drive_pid_task(double targetX, double targetY, double targetTheta);

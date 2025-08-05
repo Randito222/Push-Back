@@ -29,15 +29,17 @@ inline pros::Motor Intake(21); // Intake motor
 Motor groups for robot
 */
 
-inline pros::MotorGroup All_Drive({19, 20, 18, 10, -13, -12, -15, -2}); // All drive motors
-inline pros::MotorGroup Left_side({19, 20, 18, 10}); // Left side motor group
-inline pros::MotorGroup Right_side({-13, -12, -15, -2}); // Right side motor group
+inline pros::MotorGroup FrontLeft({-17,18}); // Front left motors
+inline pros::MotorGroup FrontRight({19,-20}); // Front right motors
+inline pros::MotorGroup BackLeft({-15,14}); // Back left motors
+inline pros::MotorGroup BackRight({12,-11}); // Back right motors
+
 
 /**
 Sensors
 */
 
-inline pros::Imu Inertial(6); // IMU sensor on port 6
+inline pros::Imu IMU(6); // IMU sensor on port 6
 
 // inline pros::Motor intake(1);
 // inline pros::adi::DigitalIn limit_switch('A');
