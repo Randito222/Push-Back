@@ -58,10 +58,15 @@ void x_drive_pid_task(double targetX, double targetY, double targetTheta) {
     BackLeft.move(bl);
     BackRight.move(br);
 
-    pros::delay(10);
+    if ((fabs(distanceError) <= 0.5 && fabs(thetaError) <= 1.0)) {
+    
+      break; // Exit the loop
+    }
+
+    pros::delay(10); // Delay to avoid overloading the CPU
   }
 
-
+  // Stop all motors after reaching the target
   FrontLeft.move(0);
   FrontRight.move(0);
   BackLeft.move(0);
