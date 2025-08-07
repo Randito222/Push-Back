@@ -257,31 +257,7 @@ void opcontrol() {
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     
-    double Angle = IMU.get_heading();  // Get the current angle of the IMU
-    double Radians = (M_PI / 180) * Angle;  // Convert the angle to radians
-    
-    int forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);   // Forward/Backward
-    int strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);   // Left/Right
-    int rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);  // Rotation
-
-    int tempforward = forward * cos(Radians) + strafe * sin(Radians);  // Calculate forward component
-    int tempstrafe = -forward * sin(Radians) + strafe * cos(Radians);  // Calculate strafe component
-
-    // Holonomic drive calculation (X-drive)
-    int fl = tempforward + tempstrafe + rotate;
-    int fr = tempforward - tempstrafe - rotate;
-    int bl = tempforward - tempstrafe + rotate;
-    int br = tempforward + tempstrafe - rotate;
-
-    // Set motor power
-    setDrivePower(fl, fr, bl, br);
-    
-
-    //chassis.opcontrol_tank();  // Tank control
-     //chassis.opcontrol_arcade_standard(ez::SPLIT);   // Standard split arcade
-    // chassis.opcontrol_arcade_standard(ez::SINGLE);  // Standard single arcade
-    // chassis.opcontrol_arcade_flipped(ez::SPLIT);    // Flipped split arcade
-    // chassis.opcontrol_arcade_flipped(ez::SINGLE);   // Flipped single arcade
+    DriveControl();  // Run the drive control function
  
     // . . .
     // Put more user control code here!
