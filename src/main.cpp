@@ -12,8 +12,8 @@
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
-    {17, -18, 15,-14},     // Left Chassis Ports (negative port will reverse it!)
-    {19, -20, 12, -11},  // Right Chassis Ports (negative port will reverse it!)
+    {-5, 15, -8},     // Left Chassis Ports (negative port will reverse it!)
+    {1, -11, 16},  // Right Chassis Ports (negative port will reverse it!)
 
     -6,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
@@ -78,7 +78,8 @@ void initialize() {
   //     {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
   //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
   //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
-      {"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
+      //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
+      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
    });
 
 
@@ -257,7 +258,8 @@ void opcontrol() {
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     
-    DriveControl();  // Run the drive control function
+    //DriveControl();  // Run the drive control function
+    chassis.opcontrol_tank();  // Tank control
  
     // . . .
     // Put more user control code here!
