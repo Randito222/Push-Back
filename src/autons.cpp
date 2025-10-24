@@ -569,3 +569,46 @@ void LeftSideAuton(){
   chassis.pid_wait();
 
 }
+
+void BruinRightAuto(){
+  chassis.pid_drive_set(14, DRIVE_SPEED ); // Goes towards the preload area
+  chassis.pid_wait();
+  FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+  MiddleIntake.move(127);
+
+  chassis.pid_turn_set(20, TURN_SPEED); // Turns to face preload
+  chassis.pid_wait();
+
+  chassis.pid_drive_set(14, 20); // Moves forward to grab preload
+  chassis.pid_wait();
+
+  chassis.pid_turn_set(-40, TURN_SPEED); // Turns to face the goal
+  chassis.pid_wait();
+
+  chassis.pid_drive_set(11, DRIVE_SPEED); // Backs away from preload area into the side tube
+  chassis.pid_wait();
+
+  FrontIntake.move(-127);  // Stop the intake motor when R2 is pressed
+  MiddleIntake.move(-127);
+  TopIntake.move(-127);
+  pros::delay(1500); // Waits to make sure preload is out
+
+  chassis.pid_drive_set(-43, DRIVE_SPEED); // Moves forward to clear the side tube
+  chassis.pid_wait();
+
+  chassis.pid_turn_set(2, TURN_SPEED); // Turns to face middle balls and middle tube
+  chassis.pid_wait();
+
+  chassis.pid_drive_set(4, DRIVE_SPEED, true); // Drives to middle balls and middle tube 
+  chassis.pid_wait_quick_chain();
+
+  FrontIntake.move(0);  // Spin the intake motor when R1 is pressed
+  MiddleIntake.move(127);
+  BackIntake.move(127);
+  chassis.pid_drive_set(-8, DRIVE_SPEED); // Drives to middle balls and middle tube 
+  chassis.pid_wait();
+}
+
+void BruinLeftAuto(){
+  // Add auton code here
+}

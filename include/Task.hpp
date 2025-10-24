@@ -7,7 +7,7 @@ void Color_Mode(); // changes color mode based on button press
 void Color_Sorter(); // task function for color sorting
 
 static int colorMode = 0;      // 0 for sorting based on sensor 1, 1 for sensor 2
-int BackIntakeControl = 0;
+inline int BackIntakeControl = 0;
 
 inline pros::Task Color_Mode_Task(Color_Mode);
 inline pros::Task Color_Sorter_Task(Color_Sorter);
