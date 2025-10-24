@@ -12,10 +12,10 @@
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
-    {-5, 15, -8},     // Left Chassis Ports (negative port will reverse it!)
-    {1, -11, 16},  // Right Chassis Ports (negative port will reverse it!)
+    {19, -20, -18,},     // Left Chassis Ports (negative port will reverse it!)
+    {-4, 5, 10,},  // Right Chassis Ports (negative port will reverse it!)
 
-    -6,      // IMU Port
+    21,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -257,9 +257,9 @@ void opcontrol() {
   while (true) {
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
+    chassis.opcontrol_tank();
     
     //DriveControl();  // Run the drive control function
-    chassis.opcontrol_tank();  // Tank control
  
     // . . .
     // Put more user control code here!
