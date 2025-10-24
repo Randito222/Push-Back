@@ -6,6 +6,7 @@
 #include "pros/imu.hpp"
 #include "pros/motor_group.hpp"
 #include "pros/motors.hpp"
+#include "pros/optical.hpp"
 
 extern Drive chassis;
 
@@ -43,6 +44,8 @@ Sensors
 */
 
 inline pros::Imu IMU(6); // IMU sensor on port 6
+inline pros::Optical OP1(7); // Optical sensor on port 7
+inline pros::Optical OP2(9); // Optical sensor on port 9
 
 // inline pros::Motor intake(1);
 // inline pros::adi::DigitalIn limit_switch('A');
