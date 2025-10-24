@@ -24,9 +24,9 @@ inline pros::Motor Front_Right_2(-20); // Top Front Right motor
 inline pros::Motor Back_Right_1(12);  // Bottom Back Right motor
 inline pros::Motor Back_Right_2(-11);  // Top Back Right motor
 
-inline pros::Motor FrontIntake(-3); // Intake motor
+inline pros::Motor FrontIntake(3); // Intake motor
 inline pros::Motor BackIntake(8);
-inline pros::Motor MiddleIntake(1);
+inline pros::Motor MiddleIntake(-1);
 inline pros::Motor TopIntake(2);
 /**
 Motor groups for robot

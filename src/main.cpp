@@ -265,12 +265,21 @@ void opcontrol() {
     // Put more user control code here!
     // . . .
 
-    if(master.get_digital(DIGITAL_R1)) {
-      Intake.move_velocity(200);  // Spin the intake motor when R1 is pressed
-    }else if(master.get_digital(DIGITAL_R2)) {
-      Intake.move_velocity(-200);  // Spin the intake motor in reverse when R2 is pressed
-    } else  {
-      Intake.move_velocity(0);  // Stop the intake motor when R2 is pressed
+    if(master.get_digital(DIGITAL_R2)) {
+      FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+      MiddleIntake.move(127);
+      TopIntake.move(127);
+      BackIntake.move(127);
+    }
+    else if(master.get_digital(DIGITAL_R1)) {
+      FrontIntake.move(-200);  // Spin the intake motor in reverse when R2 is pressed
+      MiddleIntake.move(-200);
+    } 
+    else  {
+      FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+      MiddleIntake.move(0);
+      TopIntake.move(0);
+      BackIntake.move(0);
     }
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
