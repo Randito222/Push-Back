@@ -21,10 +21,10 @@ void setDrivePower(int fl, int fr, int bl, int br) {
   Back_Right_2.move(br);
 } 
 
-void IntakeSpin() {
-  // Spin the intake motor
-  Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
-}
+// void IntakeSpin() {
+//   // Spin the intake motor
+//   Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
+// }
 
 // Start by storing the robot's current heading as the initial target
 double targetAngle = IMU.get_heading();
@@ -94,3 +94,43 @@ void DriveControl() {
   pros::delay(10);
 }
 
+// void IntakeReverse(){
+//   Intake.move_velocity(-200);
+// }
+
+int DescoreLV = -1;
+void descoreLeft(){
+  DescoreLV*=-1;
+
+  if (DescoreLV==1){
+    DescoreLeft.set_value(1);
+  }
+
+  else{
+    DescoreLeft.set_value(0);
+}
+}
+int DescoreRV = -1;
+void descoreRight(){
+  DescoreRV*=-1;
+
+  if (DescoreRV==1){
+    DescoreRight.set_value(1);
+  }
+
+  else{
+    DescoreRight.set_value(0);
+}
+}
+int ScoreP = -1;
+void ScoringP(){
+  ScoreP*=-1;
+
+  if (ScoreP==1){
+    ScorePiston.set_value(1);
+  }
+
+  else{
+    ScorePiston.set_value(0);
+}
+}

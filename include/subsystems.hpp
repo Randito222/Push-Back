@@ -2,6 +2,7 @@
 
 #include "EZ-Template/api.hpp"
 #include "api.h"
+#include "pros/adi.hpp"
 #include "pros/imu.hpp"
 #include "pros/motor_group.hpp"
 #include "pros/motors.hpp"
@@ -23,8 +24,10 @@ inline pros::Motor Front_Right_2(-20); // Top Front Right motor
 inline pros::Motor Back_Right_1(12);  // Bottom Back Right motor
 inline pros::Motor Back_Right_2(-11);  // Top Back Right motor
 
-inline pros::Motor Intake(21); // Intake motor
-
+inline pros::Motor FrontIntake(3); // Intake motor
+inline pros::Motor BackIntake(8);
+inline pros::Motor MiddleIntake(-1);
+inline pros::Motor TopIntake(2);
 /**
 Motor groups for robot
 */
@@ -43,3 +46,11 @@ inline pros::Imu IMU(6); // IMU sensor on port 6
 
 // inline pros::Motor intake(1);
 // inline pros::adi::DigitalIn limit_switch('A');
+
+/**
+Pneumatics
+*/
+inline pros::adi::DigitalOut IntakeLift('A');
+inline pros::adi::DigitalOut DescoreLeft('B');
+inline pros::adi::DigitalOut DescoreRight('C');
+inline pros::adi::DigitalOut ScorePiston('D');
