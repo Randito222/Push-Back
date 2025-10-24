@@ -93,4 +93,43 @@ void DriveControl() {
   // Delay to avoid overloading the CPU
   pros::delay(10);
 }
+void IntakeReverse(){
+  Intake.move_velocity(-200);
+}
 
+int DescoreLV = -1;
+void descoreLeft(){
+  DescoreLV*=-1;
+
+  if (DescoreLV==1){
+    DescoreLeft.set_value(1);
+  }
+
+  else{
+    DescoreLeft.set_value(0);
+}
+}
+int DescoreRV = -1;
+void descoreRight(){
+  DescoreRV*=-1;
+
+  if (DescoreRV==1){
+    DescoreRight.set_value(1);
+  }
+
+  else{
+    DescoreRight.set_value(0);
+}
+}
+int ScoreP = -1;
+void ScoringP(){
+  ScoreP*=-1;
+
+  if (ScoreP==1){
+    ScorePiston.set_value(1);
+  }
+
+  else{
+    ScorePiston.set_value(0);
+}
+}
