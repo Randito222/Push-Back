@@ -24,3 +24,4 @@ void LeftSideAuton();
 
 void BruinRightAuto();
 void BruinLeftAuto();
+void Skills();

@@ -53,7 +53,7 @@ inline pros::Optical OP2(9); // Optical sensor on port 9
 /**
 Pneumatics
 */
-inline pros::adi::DigitalOut IntakeLift('A');
-inline pros::adi::DigitalOut DescoreLeft('B');
-inline pros::adi::DigitalOut DescoreRight('C');
-inline pros::adi::DigitalOut ScorePiston('D');
+inline pros::adi::DigitalOut TongueMech('H');
+inline pros::adi::DigitalOut DescoreLeft('F');
+//inline pros::adi::DigitalOut DescoreRight('C');
+inline pros::adi::DigitalOut IntakeLift('E');

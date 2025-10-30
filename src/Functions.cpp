@@ -99,7 +99,7 @@ void DriveControl() {
 // }
 
 int DescoreLV = -1;
-void descoreLeft(){
+void descoreLeftT(){
   DescoreLV*=-1;
 
   if (DescoreLV==1){
@@ -110,27 +110,54 @@ void descoreLeft(){
     DescoreLeft.set_value(0);
 }
 }
-int DescoreRV = -1;
-void descoreRight(){
-  DescoreRV*=-1;
+// int DescoreRV = -1;
+// void descoreRight(){
+//   DescoreRV*=-1;
 
-  if (DescoreRV==1){
-    DescoreRight.set_value(1);
+//   if (DescoreRV==1){
+//     DescoreRight.set_value(1);
+//   }
+
+//   else{
+//     DescoreRight.set_value(0);
+// }
+// }
+
+// int ScoreP = -1;
+// void ScoringP(){
+//   ScoreP*=-1;
+
+//   if (ScoreP==1){
+//     ScorePiston.set_value(1);
+//   }
+
+//   else{
+//     ScorePiston.set_value(0);
+// }
+// }
+
+int IntakeScoreV = -1;
+void IntakeScoreToggle(){
+  IntakeScoreV*=-1;
+
+  if (IntakeScoreV==1){
+    IntakeLift.set_value(1);
   }
 
   else{
-    DescoreRight.set_value(0);
+    IntakeLift.set_value(0);
+  }
 }
-}
-int ScoreP = -1;
-void ScoringP(){
-  ScoreP*=-1;
 
-  if (ScoreP==1){
-    ScorePiston.set_value(1);
+int MatchLoadV = -1;
+void MatchLoading(){
+  MatchLoadV*=-1;
+
+  if (MatchLoadV==1){
+    TongueMech.set_value(1);
   }
 
   else{
-    ScorePiston.set_value(0);
-}
+    TongueMech.set_value(0);
+  }
 }

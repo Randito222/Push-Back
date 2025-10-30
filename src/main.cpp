@@ -83,6 +83,7 @@ void initialize() {
       // {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
       // {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
       {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
+      {"Skills\n\nAuton for Skills.", Skills},
       {"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
    });
 
@@ -219,7 +220,7 @@ void ez_template_extras() {
     //  When enabled:
     //  * use A and Y to increment / decrement the constants
     //  * use the arrow keys to navigate the constants
-    if (master.get_digital_new_press(DIGITAL_X))
+    if (master.get_digital_new_press(DIGITAL_LEFT))
       chassis.pid_tuner_toggle();
 
     // Trigger the selected autonomous routine
@@ -275,18 +276,45 @@ void opcontrol() {
       FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
       MiddleIntake.move(127);
       TopIntake.move(127);
-      BackIntakeControl = 1;
+      BackIntake.move(127);
+      //BackIntakeControl = 1;
     }
     else if(master.get_digital(DIGITAL_R1)) {
-      FrontIntake.move(-200);  // Spin the intake motor in reverse when R2 is pressed
-      MiddleIntake.move(-200);
+      FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
+      MiddleIntake.move(-127);
     } 
+    else if(master.get_digital(DIGITAL_L1)) {
+      TopIntake.move(127);
+      BackIntake.move(-127);// Spin the intake motor in reverse when R2 is pressed
+    }
+    else if (master.get_digital(DIGITAL_L2)) {
+      TopIntake.move(-127);
+      BackIntake.move(127);  // Spin the intake motor when R1 is pressed
+      MiddleIntake.move(-127);
+    
+    }
     else  {
       FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
       MiddleIntake.move(0);
       TopIntake.move(0);
-      BackIntakeControl = 0;
+      BackIntake.move(0);
+      //BackIntakeControl = 0;
     }
+    
+    if(master.get_digital_new_press(DIGITAL_Y))
+    {
+      descoreLeftT();
+    }
+
+    if(master.get_digital_new_press(DIGITAL_B)){
+      IntakeScoreToggle();
+    }
+
+    if(master.get_digital_new_press(DIGITAL_DOWN)){
+      MatchLoading();
+    }
+
+
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
