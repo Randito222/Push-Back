@@ -16,19 +16,19 @@ extern Drive chassis;
 Motors for robot
 */
 
-inline pros::Motor Front_Left_1(-17); // Bottom Front Left motor
-inline pros::Motor Front_Left_2(18); // Top Front Left motor
-inline pros::Motor Back_Left_1(-15);  // Bottom Back Left motor
-inline pros::Motor Back_Left_2(14);  // Top Back Left motor 
-inline pros::Motor Front_Right_1(19); // Bottom Front Right motor
-inline pros::Motor Front_Right_2(-20); // Top Front Right motor
-inline pros::Motor Back_Right_1(12);  // Bottom Back Right motor
-inline pros::Motor Back_Right_2(-11);  // Top Back Right motor
+inline pros::Motor Front_Left_1(-14); // Bottom Front Left motor
+inline pros::Motor Front_Left_2(13); // Top Front Left motor
+inline pros::Motor Back_Left_1(-12);  // Bottom Back Left motor
+inline pros::Motor Back_Left_2(11);  // Top Back Left motor 
+inline pros::Motor Front_Right_1(17); // Bottom Front Right motor
+inline pros::Motor Front_Right_2(-18); // Top Front Right motor
+inline pros::Motor Back_Right_1(-19);  // Bottom Back Right motor
+inline pros::Motor Back_Right_2(20);  // Top Back Right motor
 
-inline pros::Motor FrontIntake(3); // Intake motor
-inline pros::Motor BackIntake(8);
-inline pros::Motor MiddleIntake(-1);
-inline pros::Motor TopIntake(2);
+inline pros::Motor FrontIntake(1); // Intake motor
+inline pros::Motor Arm(10);
+inline pros::Motor MiddleIntake(0);
+inline pros::Motor TopIntake(0);
 /**
 Motor groups for robot
 */
@@ -43,7 +43,7 @@ inline pros::MotorGroup BackRight({12,-11}); // Back right motors
 Sensors
 */
 
-inline pros::Imu IMU(6); // IMU sensor on port 6
+inline pros::Imu IMU(9); // IMU sensor on port 6
 inline pros::Optical OP1(7); // Optical sensor on port 7
 inline pros::Optical OP2(9); // Optical sensor on port 9
 

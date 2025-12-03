@@ -606,7 +606,6 @@ void BruinRightAuto(){
 
   FrontIntake.move(0);  // Spin the intake motor when R1 is pressed
   MiddleIntake.move(127);
-  BackIntake.move(127);
   chassis.pid_drive_set(-8, DRIVE_SPEED); // Drives to middle balls and middle tube 
   chassis.pid_wait();
 

@@ -36,13 +36,13 @@ void Color_Sorter() {
     if(colorMode == 0) { // Sorting based on Red
         if(BackIntakeControl == 1){
 
-            if(Get_Color1() < 100) { // Adjust threshold value as needed
-              // Detected color is Red
-              BackIntake.move(-127);
-              pros::delay(500); // Run motor for 500 milliseconds
-            } else {
-              BackIntake.move(127);
-            }
+            // if(Get_Color1() < 100) { // Adjust threshold value as needed
+            //   // Detected color is Red
+            //   BackIntake.move(-127);
+            //   pros::delay(500); // Run motor for 500 milliseconds
+            // } else {
+            //   BackIntake.move(127);
+            // }
     
       
         } 
@@ -50,13 +50,13 @@ void Color_Sorter() {
     else { // Sorting based on Blue 
         if(BackIntakeControl == 1){
 
-            if(Get_Color2() > 200) { // Adjust threshold value as needed
-              // Detected color is Blue
-              BackIntake.move(-127);
-              pros::delay(500); // Run motor for 500 milliseconds
-            } else {
-              BackIntake.move(127);
-            }
+            // if(Get_Color2() > 200) { // Adjust threshold value as needed
+            //   // Detected color is Blue
+            //   BackIntake.move(-127);
+            //   pros::delay(500); // Run motor for 500 milliseconds
+            // } else {
+            //   BackIntake.move(127);
+            // }
     
       
         } 

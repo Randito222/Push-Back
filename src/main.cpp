@@ -12,10 +12,10 @@
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
-    {19, -20, -18,},     // Left Chassis Ports (negative port will reverse it!)
-    {-4, 5, 10,},  // Right Chassis Ports (negative port will reverse it!)
+    {-15, -14, 12,},     // Left Chassis Ports (negative port will reverse it!)
+    {19, 10, -7,},  // Right Chassis Ports (negative port will reverse it!)
 
-    21,      // IMU Port
+    9,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -262,9 +262,9 @@ void opcontrol() {
   while (true) {
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
-    chassis.opcontrol_tank();
+    //chassis.opcontrol_tank();
     
-    //DriveControl();  // Run the drive control function
+    DriveControl();  // Run the drive control function
  
     // . . .
     // Put more user control code here!
@@ -276,7 +276,6 @@ void opcontrol() {
       FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
       MiddleIntake.move(127);
       TopIntake.move(127);
-      BackIntake.move(127);
       //BackIntakeControl = 1;
     }
     else if(master.get_digital(DIGITAL_R1)) {
@@ -285,11 +284,9 @@ void opcontrol() {
     } 
     else if(master.get_digital(DIGITAL_L1)) {
       TopIntake.move(127);
-      BackIntake.move(-127);// Spin the intake motor in reverse when R2 is pressed
     }
     else if (master.get_digital(DIGITAL_L2)) {
       TopIntake.move(-127);
-      BackIntake.move(127);  // Spin the intake motor when R1 is pressed
       MiddleIntake.move(-127);
     
     }
@@ -297,7 +294,6 @@ void opcontrol() {
       FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
       MiddleIntake.move(0);
       TopIntake.move(0);
-      BackIntake.move(0);
       //BackIntakeControl = 0;
     }
     
