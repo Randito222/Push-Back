@@ -15,7 +15,7 @@ ez::Drive chassis(
     {-15, -14, 12,},     // Left Chassis Ports (negative port will reverse it!)
     {19, 10, -7,},  // Right Chassis Ports (negative port will reverse it!)
 
-    9,      // IMU Port
+    7,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -26,8 +26,8 @@ ez::Drive chassis(
 //  - you should get positive values on the encoders going FORWARD and RIGHT
 // - `2.75` is the wheel diameter
 // - `4.0` is the distance from the center of the wheel to the center of the robot
-ez::tracking_wheel horiz_tracker(8, 2, 2.5);  // This tracking wheel is perpendicular to the drive wheels
-ez::tracking_wheel vert_tracker(9, 2.75, 4.0);   // This tracking wheel is parallel to the drive wheels
+ez::tracking_wheel horiz_tracker(15, 2, 2.5);  // This tracking wheel is perpendicular to the drive wheels
+ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is parallel to the drive wheels
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -78,10 +78,10 @@ void initialize() {
   //     {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
   //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
   //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
-      //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
       // {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
       // {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
       // {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
+      {"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
       {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
       {"Skills\n\nAuton for Skills.", Skills},
       {"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},

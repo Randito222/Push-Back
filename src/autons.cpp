@@ -1,6 +1,8 @@
 #include "autons.hpp"
+#include "EZ-Template/drive/drive.hpp"
 #include "XDrive_PID.hpp"
 #include "main.h"
+#include "pros/motors.h"
 #include "subsystems.hpp"
 
 /////
@@ -338,7 +340,7 @@ void measure_offsets() {
     chassis.pid_targets_reset();
     chassis.drive_imu_reset();
     chassis.drive_sensor_reset();
-    chassis.drive_brake_set(MOTOR_BRAKE_HOLD);
+    chassis.drive_brake_set(pros::E_MOTOR_BRAKE_HOLD);
     chassis.odom_xyt_set(0_in, 0_in, 0_deg);
     double imu_start = chassis.odom_theta_get();
     double target = i % 2 == 0 ? 90 : 270;  // Switch the turn target every run from 270 to 90
@@ -382,11 +384,7 @@ void measure_offsets() {
 // . . .
 
 void Tuning_PID(){
-  chassis.pid_drive_set(24_in, DRIVE_SPEED, true);
-  chassis.pid_wait();
-
-  // chassis.pid_turn_set(90_deg, TURN_SPEED);
-  // chassis.pid_wait();
+  DriveToPoint_PID(-12.0, 0.0, 0,90.0,3.0);
 }
 
 void AutonTesting(){

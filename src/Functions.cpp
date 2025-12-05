@@ -30,78 +30,39 @@ void setDrivePower(int fl, int fr, int bl, int br) {
 double targetAngle = IMU.get_heading();
 bool lastButtonState = false;  // Tracks the last state of the button to detect presses
 
+int slewDrive(int target, int current, int rate) {
+    if (current < target)
+        current += rate;
+    else if (current > target)
+        current -= rate;
+
+    // Snap when close
+    if (abs(target - current) < rate)
+        current = target;
+
+    return current;
+}
+
 void DriveControl() {
-
-  // // --- BUTTON PRESS HANDLING ---
-  // // Check if the X button is currently pressed
-  // bool currentButtonState = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
-
-  // // Only act when the button changes from not pressed to pressed (rising edge)
-  // if (currentButtonState && !lastButtonState) {
-  //   // Increment the target heading by 45 degrees
-  //   targetAngle += 45.0;
-
-  //   // Keep target heading in range [0, 360)
-  //   if (targetAngle >= 360.0) targetAngle -= 360.0;
-  // }
-
-  // // Update the last button state
-  // lastButtonState = currentButtonState;
-
-  // // --- GET CURRENT IMU ANGLE AND CONVERT TO RADIANS ---
-  // double currentAngle = IMU.get_heading();
-  // double Radians = (M_PI / 180) * currentAngle;
-
-  // // --- READ CONTROLLER ANALOG INPUTS ---
-  // int forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);    // Forward/backward
-  // int strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);    // Left/right
-  // int rotate_input = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X); // Joystick rotation
-
-  // // --- ROTATION OF JOYSTICK INPUT BASED ON FIELD-CENTRIC CONTROL ---
-  // int tempforward = forward * cos(Radians) + strafe * sin(Radians);
-  // int tempstrafe  = -forward * sin(Radians) + strafe * cos(Radians);
-
-  // // --- ROTATION CONTROL: ROTATE TO TARGET ANGLE ---
-  // double error = targetAngle - currentAngle;
-
-  // // Make sure we take the shortest path (handling wrap-around at 360°)
-  // if (error > 180)  error -= 360;
-  // if (error < -180) error += 360;
-
-  // // Simple proportional controller to rotate to the target heading
-  // double kP = 1.5;  // You can tune this value
-  // int rotationPower = error * kP;
-
-  // // Clamp rotation power to valid motor range
-  // if (rotationPower > 127)  rotationPower = 127;
-  // if (rotationPower < -127) rotationPower = -127;
-
-  // // If the robot is close enough to the target angle, allow joystick rotation
-  // if (fabs(error) < 1.5) {
-  //   rotationPower = rotate_input;  // Let driver rotate manually
-  // }
-
-  // // --- HOLONOMIC DRIVE CALCULATION (X-DRIVE) ---
-  // int fl = tempforward + tempstrafe + rotationPower;  // Front left motor
-  // int fr = tempforward - tempstrafe - rotationPower;  // Front right motor
-  // int bl = tempforward - tempstrafe + rotationPower;  // Back left motor
-  // int br = tempforward + tempstrafe - rotationPower;  // Back right motor
-
-  // // Send power to the motors
-  // setDrivePower(fl, fr, bl, br);
 
   int forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);   // Forward/Backward
   int strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);   // Left/Right
   int rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);  // Rotation
 
   // Holonomic drive calculation (X-drive)
-  int fl = forward + strafe + rotate;
-  int fr = forward - strafe - rotate;
-  int bl = forward - strafe + rotate;
-  int br = forward + strafe - rotate;
+  int flTarget = forward + strafe + rotate;
+  int frTarget = forward - strafe - rotate;
+  int blTarget = forward - strafe + rotate;
+  int brTarget = forward + strafe - rotate;
 
-  // Set motor power
-  setDrivePower(fl, fr, bl, br);
+  // Apply slew rate to each wheel
+  int flPower = slewDrive(flTarget, flPower, 100);
+  int frPower = slewDrive(frTarget, frPower, 100);
+  int blPower = slewDrive(blTarget, blPower,  100);
+  int brPower = slewDrive(brTarget, brPower, 100);
+
+// Send smoothed values to the motors
+  setDrivePower(flPower, frPower, blPower, brPower);
 
   // Delay to avoid overloading the CPU
   pros::delay(10);

@@ -41,5 +41,10 @@ public:
     }
 };
 
-void pid_wait_until_distance(double threshold);
-void x_drive_pid_task(double targetX, double targetY, double targetTheta);
+
+double ticksToInches(double ticks);
+double KeepInRange(float Value, double MinValue, double MaxValue);
+void StopBase();
+void updateOdometry();
+void TurnToAngle_PID(double targetAngle, double maxSpeed, double exitError);
+void DriveToPoint_PID(double targetX, double targetY, double targetHeading, double maxSpeed , double slew);
