@@ -10,3 +10,5 @@ void descoreRight();
 void IntakeScoreToggle();
 void ScoringP();
 void MatchLoading();
+inline int KnownState = 0;
+void ArmAction();

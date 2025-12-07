@@ -258,8 +258,11 @@ void opcontrol() {
   // This is preference to what you like to drive on
   
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
+  int  IntakeLiftT = -1;
+  int KnownState = 0;
 
   while (true) {
+    ArmAction();
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     //chassis.opcontrol_tank();
@@ -274,40 +277,34 @@ void opcontrol() {
 
     if(master.get_digital(DIGITAL_R2)) {
       FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-      MiddleIntake.move(127);
-      TopIntake.move(127);
-      //BackIntakeControl = 1;
     }
     else if(master.get_digital(DIGITAL_R1)) {
       FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
-      MiddleIntake.move(-127);
     } 
-    else if(master.get_digital(DIGITAL_L1)) {
-      TopIntake.move(127);
-    }
-    else if (master.get_digital(DIGITAL_L2)) {
-      TopIntake.move(-127);
-      MiddleIntake.move(-127);
-    
-    }
-    else  {
+    // else if(master.get_digital(DIGITAL_B) == true) {
+    //   Arm.move_absolute(-530,600);  // Stop the intake motor when B is pressed
+    //   KnownState=1;
+    //   pros::delay(200);
+    // }
+    // else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
+    //   Arm.move_absolute(0,200);  // Stop the intake motor when B is released
+    //   KnownState=0;
+    //   pros::delay(200);
+
+    // }
+    else{
       FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-      MiddleIntake.move(0);
-      TopIntake.move(0);
-      //BackIntakeControl = 0;
     }
     
-    if(master.get_digital_new_press(DIGITAL_Y))
-    {
-      descoreLeftT();
-    }
-
-    if(master.get_digital_new_press(DIGITAL_B)){
-      IntakeScoreToggle();
-    }
-
+    
     if(master.get_digital_new_press(DIGITAL_DOWN)){
-      MatchLoading();
+      IntakeLiftT *= -1;
+      if(IntakeLiftT == 1){
+        IntakeLift.set_value(true);
+      }
+      else{
+        IntakeLift.set_value(false);
+      }
     }
 
 
