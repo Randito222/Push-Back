@@ -1,5 +1,6 @@
 #include "autons.hpp"
 #include "main.h"
+#include "pros/rtos.hpp"
 #include "subsystems.hpp"
 
 /////
@@ -553,4 +554,26 @@ void LeftSideAuton(){
   chassis.pid_drive_set(-8, DRIVE_SPEED, true); // Backs up to get touch middle goal
   chassis.pid_wait();
 
+}
+void skillsAuton(){
+  chassis.pid_drive_set(39, DRIVE_SPEED, true); // Goes towards the preload area
+  pros::delay(500);
+  chassis.pid_turn_set(-42, TURN_SPEED);
+  pros::delay(300);
+  FrontIntake.move(127);
+  pros::delay(2000);
+  chassis.pid_drive_set(11, DRIVE_SPEED, true); // Goes towards the preload area
+  pros::delay(300);
+  FrontIntake.move(-127);
+  pros::delay(3000);
+  chassis.pid_drive_set(-16, DRIVE_SPEED, true);
+  pros::delay(300);
+  chassis.pid_turn_set(-48, TURN_SPEED);
+  pros::delay(300);
+  chassis.pid_drive_set(70, DRIVE_SPEED, true);
+  pros::delay(300);
+  chassis.pid_turn_set(105, TURN_SPEED);
+  pros::delay(300);
+  FrontIntake.move(127);
+  pros::delay(2000);
 }
