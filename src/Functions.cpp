@@ -23,7 +23,11 @@ void setDrivePower(int fl, int fr, int bl, int br) {
 
 void IntakeSpin() {
   // Spin the intake motor
-  Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
+  FrontIntake.move(-27);
+  MiddleIntake.move(-27);  // Set the intake motor to spin at 200 RPM
+  TopIntake.move(127);
+  BackIntake.move(127);
+
 }
 
 // Start by storing the robot's current heading as the initial target
@@ -93,9 +97,9 @@ void DriveControl() {
   // Delay to avoid overloading the CPU
   pros::delay(10);
 }
-void IntakeReverse(){
-  Intake.move_velocity(-200);
-}
+// void IntakeReverse(){
+//   Intake.move_velocity(-200);
+// }
 
 int DescoreLV = -1;
 void descoreLeft(){

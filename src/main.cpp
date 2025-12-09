@@ -1,5 +1,6 @@
 #include "main.h"
 #include <math.h>
+//#include <source_location>
 #include "EZ-Template/util.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
@@ -79,7 +80,8 @@ void initialize() {
   //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
   //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
       //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
-      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+      {"Auton Testing\n\nThis is for testing auton code.", soloAWP},
+      //{"Drive Example\n\nDrive forward, turn, and come back", DriveControl}
    });
 
 
@@ -266,11 +268,11 @@ void opcontrol() {
     // . . .
 
     if(master.get_digital(DIGITAL_R1)) {
-      Intake.move_velocity(200);  // Spin the intake motor when R1 is pressed
+      IntakeSpin();  // Spin the intake motor when R1 is pressed
     }else if(master.get_digital(DIGITAL_R2)) {
-      Intake.move_velocity(-200);  // Spin the intake motor in reverse when R2 is pressed
+      IntakeReverse();  // Spin the intake motor in reverse when R2 is pressed
     } else  {
-      Intake.move_velocity(0);  // Stop the intake motor when R2 is pressed
+      // Intake.move_velocity(0);  // Stop the intake motor when R2 is pressed
     }
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME

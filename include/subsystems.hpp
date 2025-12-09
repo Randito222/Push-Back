@@ -50,7 +50,7 @@ inline pros::Imu IMU(6); // IMU sensor on port 6
 /**
 Pneumatics
 */
-inline pros::adi::DigitalOut IntakeLift('A');
-inline pros::adi::DigitalOut DescoreLeft('B');
-inline pros::adi::DigitalOut DescoreRight('C');
-inline pros::adi::DigitalOut ScorePiston('D');
+inline pros::adi::DigitalOut IntakeLift('E');
+inline pros::adi::DigitalOut DescoreLeft('H');
+inline pros::adi::DigitalOut DescoreRight('G');
+inline pros::adi::DigitalOut ScorePiston('F');
