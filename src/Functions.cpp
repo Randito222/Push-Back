@@ -21,6 +21,7 @@ void setDrivePower(int fl, int fr, int bl, int br) {
   Back_Right_2.move(br);
 } 
 
+<<<<<<< HEAD
 void IntakeSpin() {
   // Spin the intake motor
   FrontIntake.move(-27);
@@ -29,80 +30,183 @@ void IntakeSpin() {
   BackIntake.move(127);
 
 }
+=======
+// void IntakeSpin() {
+//   // Spin the intake motor
+//   Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
+// }
+>>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7
 
 // Start by storing the robot's current heading as the initial target
 double targetAngle = IMU.get_heading();
 bool lastButtonState = false;  // Tracks the last state of the button to detect presses
 
+int slewDrive(int target, int current, int rate) {
+    if (current < target)
+        current += rate;
+    else if (current > target)
+        current -= rate;
+
+    // Snap when close
+    if (abs(target - current) < rate)
+        current = target;
+
+    return current;
+}
+
 void DriveControl() {
 
-  // --- BUTTON PRESS HANDLING ---
-  // Check if the X button is currently pressed
-  bool currentButtonState = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
+  // =============================
+    // Persistent power values
+    // =============================
+    static int flPower = 0;
+    static int frPower = 0;
+    static int blPower = 0;
+    static int brPower = 0;
 
-  // Only act when the button changes from not pressed to pressed (rising edge)
-  if (currentButtonState && !lastButtonState) {
-    // Increment the target heading by 45 degrees
-    targetAngle += 45.0;
+    const int slewRate = 50;   // Lower = smoother, higher = more responsive
 
-    // Keep target heading in range [0, 360)
-    if (targetAngle >= 360.0) targetAngle -= 360.0;
-  }
+    // =============================
+    // Controller input with deadzones
+    // =============================
+    double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+    double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+    double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
-  // Update the last button state
-  lastButtonState = currentButtonState;
+    if (fabs(forward) < 5) forward = 0;
+    if (fabs(strafe)  < 5) strafe  = 0;
+    if (fabs(rotate)  < 5) rotate  = 0;
 
-  // --- GET CURRENT IMU ANGLE AND CONVERT TO RADIANS ---
-  double currentAngle = IMU.get_heading();
-  double Radians = (M_PI / 180) * currentAngle;
+    // =============================
+    // FIELD CENTRIC TRANSFORMATION
+    // =============================
+    double headingRad = IMU2.get_rotation() * M_PI / 180.0;
 
-  // --- READ CONTROLLER ANALOG INPUTS ---
-  int forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);    // Forward/backward
-  int strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);    // Left/right
-  int rotate_input = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X); // Joystick rotation
+    double tempForward =  forward * cos(headingRad) + strafe * sin(headingRad);
+    double tempStrafe  = -forward * sin(headingRad) + strafe * cos(headingRad);
 
-  // --- ROTATION OF JOYSTICK INPUT BASED ON FIELD-CENTRIC CONTROL ---
-  int tempforward = forward * cos(Radians) + strafe * sin(Radians);
-  int tempstrafe  = -forward * sin(Radians) + strafe * cos(Radians);
+    forward = tempForward;
+    strafe  = tempStrafe;
 
-  // --- ROTATION CONTROL: ROTATE TO TARGET ANGLE ---
-  double error = targetAngle - currentAngle;
+    // =============================
+    // X-DRIVE MOTOR MIXING
+    // =============================
+    int flTarget = forward + strafe + rotate;
+    int frTarget = forward - strafe - rotate;
+    int blTarget = forward - strafe + rotate;
+    int brTarget = forward + strafe - rotate;
 
-  // Make sure we take the shortest path (handling wrap-around at 360°)
-  if (error > 180)  error -= 360;
-  if (error < -180) error += 360;
+    // =============================
+    // INTERNAL SLEW RATE LIMITING
+    // =============================
+    auto applySlew = [&](int target, int &current) {
+        if (current < target)
+            current += slewRate;
+        else if (current > target)
+            current -= slewRate;
 
-  // Simple proportional controller to rotate to the target heading
-  double kP = 1.5;  // You can tune this value
-  int rotationPower = error * kP;
+        // If close, snap to target
+        if (abs(target - current) < slewRate)
+            current = target;
+    };
 
-  // Clamp rotation power to valid motor range
-  if (rotationPower > 127)  rotationPower = 127;
-  if (rotationPower < -127) rotationPower = -127;
+    applySlew(flTarget, flPower);
+    applySlew(frTarget, frPower);
+    applySlew(blTarget, blPower);
+    applySlew(brTarget, brPower);
 
-  // If the robot is close enough to the target angle, allow joystick rotation
-  if (fabs(error) < 1.5) {
-    rotationPower = rotate_input;  // Let driver rotate manually
-  }
+    // =============================
+    // Send power to motors
+    // =============================
+    setDrivePower(flPower, frPower, blPower, brPower);
 
-  // --- HOLONOMIC DRIVE CALCULATION (X-DRIVE) ---
-  int fl = tempforward + tempstrafe + rotationPower;  // Front left motor
-  int fr = tempforward - tempstrafe - rotationPower;  // Front right motor
-  int bl = tempforward - tempstrafe + rotationPower;  // Back left motor
-  int br = tempforward + tempstrafe - rotationPower;  // Back right motor
+    pros::delay(10);
+}
 
-  // Send power to the motors
-  setDrivePower(fl, fr, bl, br);
+void DriveControlBackUp() {
+
+  // =============================
+  // Persistent power values
+  // =============================
+  static int flPower = 0;
+  static int frPower = 0;
+  static int blPower = 0;
+  static int brPower = 0;
+
+  const int slewRate = 50;   // Lower = smoother, higher = more responsive
+
+  // =============================
+  // Controller input with deadzones
+  // =============================
+  double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+  double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+  double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+
+  if (fabs(forward) < 5) forward = 0;
+  if (fabs(strafe)  < 5) strafe  = 0;
+  if (fabs(rotate)  < 5) rotate  = 0;
+
+  // =============================
+  // X-DRIVE MOTOR MIXING
+  // =============================
+  int flTarget = forward + strafe + rotate;
+  int frTarget = forward - strafe - rotate;
+  int blTarget = forward - strafe + rotate;
+  int brTarget = forward + strafe - rotate;
+
+  // =============================
+  // INTERNAL SLEW RATE LIMITING
+  // =============================
+  auto applySlew = [&](int target, int &current) {
+      if (current < target)
+          current += slewRate;
+      else if (current > target)
+          current -= slewRate;
+
+      // If close, snap to target
+      if (abs(target - current) < slewRate)
+            current = target;
+  };
+
+  applySlew(flTarget, flPower);
+  applySlew(frTarget, frPower);
+  applySlew(blTarget, blPower);
+  applySlew(brTarget, brPower);
+
+  // =============================
+  // Send power to motors
+  // =============================
+  setDrivePower(flPower, frPower, blPower, brPower);
 
   // Delay to avoid overloading the CPU
   pros::delay(10);
 }
+<<<<<<< HEAD
+// void IntakeReverse(){
+//   Intake.move_velocity(-200);
+// }
+=======
+
+
 // void IntakeReverse(){
 //   Intake.move_velocity(-200);
 // }
 
+void IntakeLiftToggle(){
+  if(master.get_digital_new_press(DIGITAL_DOWN)){
+      IntakeLiftT *= -1;
+      if(IntakeLiftT == 1){
+        IntakeLift.set_value(true);
+      }
+      else{
+        IntakeLift.set_value(false);
+      }
+    }
+}
+>>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7
+
 int DescoreLV = -1;
-void descoreLeft(){
+void descoreLeftT(){
   DescoreLV*=-1;
 
   if (DescoreLV==1){
@@ -113,27 +217,78 @@ void descoreLeft(){
     DescoreLeft.set_value(0);
 }
 }
-int DescoreRV = -1;
-void descoreRight(){
-  DescoreRV*=-1;
+// int DescoreRV = -1;
+// void descoreRight(){
+//   DescoreRV*=-1;
 
-  if (DescoreRV==1){
-    DescoreRight.set_value(1);
+//   if (DescoreRV==1){
+//     DescoreRight.set_value(1);
+//   }
+
+//   else{
+//     DescoreRight.set_value(0);
+// }
+// }
+
+// int ScoreP = -1;
+// void ScoringP(){
+//   ScoreP*=-1;
+
+//   if (ScoreP==1){
+//     ScorePiston.set_value(1);
+//   }
+
+//   else{
+//     ScorePiston.set_value(0);
+// }
+// }
+
+int IntakeScoreV = -1;
+void IntakeScoreToggle(){
+  IntakeScoreV*=-1;
+
+  if (IntakeScoreV==1){
+    IntakeLift.set_value(1);
   }
 
   else{
-    DescoreRight.set_value(0);
+    IntakeLift.set_value(0);
+  }
 }
-}
-int ScoreP = -1;
-void ScoringP(){
-  ScoreP*=-1;
 
-  if (ScoreP==1){
-    ScorePiston.set_value(1);
+int MatchLoadV = -1;
+void MatchLoading(){
+  MatchLoadV*=-1;
+
+  if (MatchLoadV==1){
+    TongueMech.set_value(1);
   }
 
   else{
-    ScorePiston.set_value(0);
+    TongueMech.set_value(0);
+  }
 }
+
+void ArmAction(){
+  if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-570,130);  // Stop the intake motor when B is pressed
+    KnownState=1;
+    pros::delay(200);
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+  }
+  
+  else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-700,130);  // Stop the intake motor when B is pressed
+    KnownState=1;
+    pros::delay(200);
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+  }
+  else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
+    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
+    KnownState=0;
+    pros::delay(200);
+
+  }
 }

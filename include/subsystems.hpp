@@ -6,6 +6,8 @@
 #include "pros/imu.hpp"
 #include "pros/motor_group.hpp"
 #include "pros/motors.hpp"
+#include "pros/optical.hpp"
+#include "pros/rotation.hpp"
 
 extern Drive chassis;
 
@@ -15,27 +17,27 @@ extern Drive chassis;
 Motors for robot
 */
 
-inline pros::Motor Front_Left_1(-17); // Bottom Front Left motor
-inline pros::Motor Front_Left_2(18); // Top Front Left motor
-inline pros::Motor Back_Left_1(-15);  // Bottom Back Left motor
-inline pros::Motor Back_Left_2(14);  // Top Back Left motor 
-inline pros::Motor Front_Right_1(19); // Bottom Front Right motor
-inline pros::Motor Front_Right_2(-20); // Top Front Right motor
-inline pros::Motor Back_Right_1(12);  // Bottom Back Right motor
-inline pros::Motor Back_Right_2(-11);  // Top Back Right motor
+inline pros::Motor Front_Left_1(-14); // Bottom Front Left motor
+inline pros::Motor Front_Left_2(13); // Top Front Left motor
+inline pros::Motor Back_Left_1(-12);  // Bottom Back Left motor
+inline pros::Motor Back_Left_2(11);  // Top Back Left motor 
+inline pros::Motor Front_Right_1(-17); // Bottom Front Right motor
+inline pros::Motor Front_Right_2(18); // Top Front Right motor
+inline pros::Motor Back_Right_1(19);  // Bottom Back Right motor
+inline pros::Motor Back_Right_2(-20);  // Top Back Right motor
 
-inline pros::Motor FrontIntake(-3); // Intake motor
-inline pros::Motor BackIntake(8);
-inline pros::Motor MiddleIntake(1);
-inline pros::Motor TopIntake(2);
+inline pros::Motor FrontIntake(1); // Intake motor
+inline pros::Motor Arm(10);
+inline pros::Motor MiddleIntake(0);
+inline pros::Motor TopIntake(0);
 /**
 Motor groups for robot
 */
 
-inline pros::MotorGroup FrontLeft({-17,18}); // Front left motors
-inline pros::MotorGroup FrontRight({19,-20}); // Front right motors
-inline pros::MotorGroup BackLeft({-15,14}); // Back left motors
-inline pros::MotorGroup BackRight({12,-11}); // Back right motors
+inline pros::MotorGroup FrontLeft({-14,13}); // Front left motors
+inline pros::MotorGroup FrontRight({-17,18}); // Front right motors
+inline pros::MotorGroup BackLeft({-12,11}); // Back left motors
+inline pros::MotorGroup BackRight({19,-20}); // Back right motors
 
 
 /**
@@ -43,6 +45,12 @@ Sensors
 */
 
 inline pros::Imu IMU(6); // IMU sensor on port 6
+inline pros::Imu IMU2(2); // IMU sensor on port 2
+inline pros::Optical OP1(7); // Optical sensor on port 7
+inline pros::Optical OP2(9); // Optical sensor on port 9
+inline pros::Rotation LVerticalTracker(15); // Left Horizontal tracking wheel on port 15
+inline pros::Rotation RVerticalTracker(9); // Right Horizontal tracking wheel on port 8
+inline pros::Rotation HorizontalTracker(16); // Vertical tracking wheel on port 16
 
 // inline pros::Motor intake(1);
 // inline pros::adi::DigitalIn limit_switch('A');
@@ -50,7 +58,14 @@ inline pros::Imu IMU(6); // IMU sensor on port 6
 /**
 Pneumatics
 */
+<<<<<<< HEAD
 inline pros::adi::DigitalOut IntakeLift('E');
 inline pros::adi::DigitalOut DescoreLeft('H');
 inline pros::adi::DigitalOut DescoreRight('G');
 inline pros::adi::DigitalOut ScorePiston('F');
+=======
+inline pros::adi::DigitalOut TongueMech('H');
+inline pros::adi::DigitalOut DescoreLeft('F');
+//inline pros::adi::DigitalOut DescoreRight('C');
+inline pros::adi::DigitalOut IntakeLift('A');
+>>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7

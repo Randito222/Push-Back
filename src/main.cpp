@@ -1,6 +1,10 @@
 #include "main.h"
 #include <math.h>
+<<<<<<< HEAD
 //#include <source_location>
+=======
+#include "EZ-Template/drive/drive.hpp"
+>>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7
 #include "EZ-Template/util.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
@@ -13,10 +17,10 @@
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
-    {19, -20, -18,},     // Left Chassis Ports (negative port will reverse it!)
-    {-4, 5, 10,},  // Right Chassis Ports (negative port will reverse it!)
+    {-14, 13, -12,11},     // Left Chassis Ports (negative port will reverse it!)
+    {-17, 18, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
 
-    21,      // IMU Port
+    2,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -27,8 +31,8 @@ ez::Drive chassis(
 //  - you should get positive values on the encoders going FORWARD and RIGHT
 // - `2.75` is the wheel diameter
 // - `4.0` is the distance from the center of the wheel to the center of the robot
-ez::tracking_wheel horiz_tracker(8, 2, 2.5);  // This tracking wheel is perpendicular to the drive wheels
-ez::tracking_wheel vert_tracker(9, 2.75, 4.0);   // This tracking wheel is parallel to the drive wheels
+ez::tracking_wheel horiz_tracker(15, 2, 2.5);  // This tracking wheel is perpendicular to the drive wheels
+ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is parallel to the drive wheels
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -39,6 +43,7 @@ ez::tracking_wheel vert_tracker(9, 2.75, 4.0);   // This tracking wheel is paral
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
+  Drive_Controls_task.resume(); // Start the drive control task
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
@@ -79,9 +84,19 @@ void initialize() {
   //     {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
   //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
   //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
+<<<<<<< HEAD
       //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
       {"Auton Testing\n\nThis is for testing auton code.", soloAWP},
       //{"Drive Example\n\nDrive forward, turn, and come back", DriveControl}
+=======
+      // {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+      // {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
+      // {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
+      {"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
+      // {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
+      {"Skills\n\nAuton for Skills.", Skills},
+      {"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
+>>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7
    });
 
 
@@ -217,7 +232,7 @@ void ez_template_extras() {
     //  When enabled:
     //  * use A and Y to increment / decrement the constants
     //  * use the arrow keys to navigate the constants
-    if (master.get_digital_new_press(DIGITAL_X))
+    if (master.get_digital_new_press(DIGITAL_LEFT))
       chassis.pid_tuner_toggle();
 
     // Trigger the selected autonomous routine
@@ -255,25 +270,59 @@ void opcontrol() {
   // This is preference to what you like to drive on
   
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
+  int  IntakeLiftT = -1;
+  int KnownState = 0;
+  
 
   while (true) {
+    ArmAction();
+    IntakeLiftToggle();
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
-    chassis.opcontrol_tank();
+    //chassis.opcontrol_tank();
+    
     
     //DriveControl();  // Run the drive control function
- 
+    
+    
     // . . .
     // Put more user control code here!
     // . . .
 
+<<<<<<< HEAD
     if(master.get_digital(DIGITAL_R1)) {
       IntakeSpin();  // Spin the intake motor when R1 is pressed
     }else if(master.get_digital(DIGITAL_R2)) {
       IntakeReverse();  // Spin the intake motor in reverse when R2 is pressed
     } else  {
       // Intake.move_velocity(0);  // Stop the intake motor when R2 is pressed
+=======
+    
+
+    if(master.get_digital(DIGITAL_R2)) {
+      FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+>>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7
     }
+    else if(master.get_digital(DIGITAL_R1)) {
+      FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
+    } 
+    // else if(master.get_digital(DIGITAL_B) == true) {
+    //   Arm.move_absolute(-530,600);  // Stop the intake motor when B is pressed
+    //   KnownState=1;
+    //   pros::delay(200);
+    // }
+    // else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
+    //   Arm.move_absolute(0,200);  // Stop the intake motor when B is released
+    //   KnownState=0;
+    //   pros::delay(200);
+
+    // }
+    else{
+      FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+    }
+  
+
+
 
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
