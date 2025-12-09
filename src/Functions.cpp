@@ -69,7 +69,7 @@ void DriveControl() {
     // =============================
     // FIELD CENTRIC TRANSFORMATION
     // =============================
-    double headingRad = IMU.get_rotation() * M_PI / 180.0;
+    double headingRad = IMU2.get_rotation() * M_PI / 180.0;
 
     double tempForward =  forward * cos(headingRad) + strafe * sin(headingRad);
     double tempStrafe  = -forward * sin(headingRad) + strafe * cos(headingRad);
@@ -112,10 +112,81 @@ void DriveControl() {
     pros::delay(10);
 }
 
+void DriveControlBackUp() {
+
+  // =============================
+  // Persistent power values
+  // =============================
+  static int flPower = 0;
+  static int frPower = 0;
+  static int blPower = 0;
+  static int brPower = 0;
+
+  const int slewRate = 50;   // Lower = smoother, higher = more responsive
+
+  // =============================
+  // Controller input with deadzones
+  // =============================
+  double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+  double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+  double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+
+  if (fabs(forward) < 5) forward = 0;
+  if (fabs(strafe)  < 5) strafe  = 0;
+  if (fabs(rotate)  < 5) rotate  = 0;
+
+  // =============================
+  // X-DRIVE MOTOR MIXING
+  // =============================
+  int flTarget = forward + strafe + rotate;
+  int frTarget = forward - strafe - rotate;
+  int blTarget = forward - strafe + rotate;
+  int brTarget = forward + strafe - rotate;
+
+  // =============================
+  // INTERNAL SLEW RATE LIMITING
+  // =============================
+  auto applySlew = [&](int target, int &current) {
+      if (current < target)
+          current += slewRate;
+      else if (current > target)
+          current -= slewRate;
+
+      // If close, snap to target
+      if (abs(target - current) < slewRate)
+            current = target;
+  };
+
+  applySlew(flTarget, flPower);
+  applySlew(frTarget, frPower);
+  applySlew(blTarget, blPower);
+  applySlew(brTarget, brPower);
+
+  // =============================
+  // Send power to motors
+  // =============================
+  setDrivePower(flPower, frPower, blPower, brPower);
+
+  // Delay to avoid overloading the CPU
+  pros::delay(10);
+}
+
 
 // void IntakeReverse(){
 //   Intake.move_velocity(-200);
 // }
+
+void IntakeLiftToggle(){
+  if(master.get_digital_new_press(DIGITAL_DOWN)){
+      IntakeLiftT *= -1;
+      if(IntakeLiftT == 1){
+        IntakeLift.set_value(true);
+      }
+      else{
+        IntakeLift.set_value(false);
+      }
+    }
+}
 
 int DescoreLV = -1;
 void descoreLeftT(){
@@ -182,13 +253,21 @@ void MatchLoading(){
 }
 
 void ArmAction(){
-  if(master.get_digital(DIGITAL_B) == true) {
+  if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-530,30);  // Stop the intake motor when B is pressed
+    Arm.move_absolute(-570,130);  // Stop the intake motor when B is pressed
     KnownState=1;
     pros::delay(200);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-    }
+  }
+  
+  else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-700,130);  // Stop the intake motor when B is pressed
+    KnownState=1;
+    pros::delay(200);
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+  }
   else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
     Arm.move_absolute(5,200);  // Stop the intake motor when B is released
     KnownState=0;

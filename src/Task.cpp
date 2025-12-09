@@ -64,3 +64,32 @@ void Color_Sorter() {
     pros::delay(20); // Small delay to prevent CPU overload
   }
 }
+
+void Drive_Controls_swap() {
+  bool lastButtonState = false;  // Tracks the last state of the button to detect presses
+  bool fieldCentric = true;     // Start in robot-centric mode
+
+  while (true) {
+    // Check if the X button is currently pressed
+    bool currentButtonState = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
+
+    // Only act when the button changes from not pressed to pressed (rising edge)
+    if (currentButtonState && !lastButtonState) {
+      fieldCentric = !fieldCentric;  // Toggle between field-centric and robot-centric
+    }
+    if (fieldCentric) {
+      // Field-centric drive code
+      // (This would involve transforming joystick inputs based on robot heading)
+      DriveControl();
+    } else {
+      // Robot-centric drive code
+      // (This would use joystick inputs directly)
+      DriveControlBackUp();
+    }
+
+    // Update the last button state
+    lastButtonState = currentButtonState;
+
+    pros::delay(20); // Small delay to prevent CPU overload
+  }
+}

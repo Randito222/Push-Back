@@ -1,5 +1,6 @@
 #include "main.h"
 #include <math.h>
+#include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
@@ -12,10 +13,10 @@
 // Chassis constructor
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
-    {-15, -14, 12,},     // Left Chassis Ports (negative port will reverse it!)
-    {19, 10, -7,},  // Right Chassis Ports (negative port will reverse it!)
+    {-14, 13, -12,11},     // Left Chassis Ports (negative port will reverse it!)
+    {-17, 18, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
 
-    7,      // IMU Port
+    2,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -38,6 +39,7 @@ ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is para
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
+  Drive_Controls_task.resume(); // Start the drive control task
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
@@ -82,7 +84,7 @@ void initialize() {
       // {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
       // {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
       {"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
-      {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
+      // {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
       {"Skills\n\nAuton for Skills.", Skills},
       {"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
    });
@@ -260,15 +262,19 @@ void opcontrol() {
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
   int  IntakeLiftT = -1;
   int KnownState = 0;
+  
 
   while (true) {
     ArmAction();
+    IntakeLiftToggle();
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     //chassis.opcontrol_tank();
     
-    DriveControl();  // Run the drive control function
- 
+    
+    //DriveControl();  // Run the drive control function
+    
+    
     // . . .
     // Put more user control code here!
     // . . .
@@ -295,17 +301,7 @@ void opcontrol() {
     else{
       FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
     }
-    
-    
-    if(master.get_digital_new_press(DIGITAL_DOWN)){
-      IntakeLiftT *= -1;
-      if(IntakeLiftT == 1){
-        IntakeLift.set_value(true);
-      }
-      else{
-        IntakeLift.set_value(false);
-      }
-    }
+  
 
 
 

@@ -3,8 +3,10 @@ void setDrivePower(int fl, int fr, int bl, int br);
 
 void IntakeSpin();
 void DriveControl();
+void DriveControlBackUp();
 void IntakeReverse();
-void ScoreLift();
+inline int  IntakeLiftT = -1;
+void IntakeLiftToggle();
 void descoreLeftT();
 void descoreRight();
 void IntakeScoreToggle();

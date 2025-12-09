@@ -384,7 +384,46 @@ void measure_offsets() {
 // . . .
 
 void Tuning_PID(){
-  DriveToPoint_PID(-12.0, 0.0, 0,90.0,3.0);
+  // PID_Movement(80, 100);
+  // PID_Turn(90, 90);
+  // PID_Strafe(-10, 90);
+
+//   PID_Strafe(-80, 50);
+//   //PID_Strafe(20, 50);
+//   PID_Turn(173, 90);
+//   pros::delay(500);
+//   PID_Movement(-37, 60);
+
+//   FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+//   Arm.move_absolute(-530,130);  // 
+//   pros::delay(800);
+//   Arm.move_absolute(0,130);  // 
+
+FrontIntake.move(127);  // Stop the intake motor when R2 is pressed
+
+//PID_Movement(80, 70);
+chassis.pid_drive_set(30, 70);
+chassis.pid_wait();
+
+chassis.pid_turn_set(-44,60);
+pros::delay(500);
+
+chassis.pid_drive_set(15, 70);
+pros::delay(500);
+
+FrontIntake.move(-90);
+pros::delay(500);
+
+FrontIntake.move(-90);
+pros::delay(500);
+
+FrontIntake.move(-90);
+pros::delay(3000);
+
+IntakeLift.set_value(1);
+pros::delay(3000);
+IntakeLift.set_value(0);
+FrontIntake.move(0);
 }
 
 void AutonTesting(){
@@ -627,10 +666,14 @@ void BruinLeftAuto(){
 void Skills(){
   // Add auton code here
 
-  FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
-  chassis.pid_drive_set(30, DRIVE_SPEED ); // Goes towards the preload area
-  chassis.pid_wait();
+  // FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
+  // chassis.pid_drive_set(30, DRIVE_SPEED ); // Goes towards the preload area
+  // chassis.pid_wait();
 
-  chassis.pid_drive_set(-18, DRIVE_SPEED ); // Goes towards the preload area
-  chassis.pid_wait();
+  // chassis.pid_drive_set(-18, DRIVE_SPEED ); // Goes towards the preload area
+  // chassis.pid_wait();
+
+  // PID_Strafe(-80, 100);
+  // pros::delay(500);
+  // PID_Strafe(40,  100);
 }

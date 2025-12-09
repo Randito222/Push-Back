@@ -42,17 +42,13 @@ public:
 };
 
 
-double ticksToInches(double ticks);
-double KeepInRange(float Value, double MinValue, double MaxValue);
-double inchesToTicks(double inches);
-double getStrafeTicks();
-void resetDriveEncoders();
-double getDriveAvg();
-double slewRate(double target, double current, double rate);
+
+
+static double clamp(double v, double lo, double hi);
+static double slewRate(double target, double current, double maxDelta);
 void StopBase();
-void updateOdometry();
-void TurnToAngle_PID(double targetAngle, double maxSpeed, double exitError);
-void DriveToPoint_PID(double targetX, double targetY, double targetHeading, double maxSpeed , double slew);
-void PID_Movement(double inches, double maxPower);
-void PID_Strafe(double inches, double maxPower);
-void PID_Turn(double targetDeg, double maxPower);
+void DriveToPoint_PID(double targetX,double targetY,double targetHeadingDeg,double maxSpeed,double slew);
+
+// void PID_Movement(double inches, double maxPower);
+// void PID_Strafe(double inches, double maxPower);
+// void PID_Turn(double targetDeg, double maxPower);
