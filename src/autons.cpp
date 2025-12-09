@@ -597,37 +597,6 @@ void LeftSideAuton(){
   chassis.pid_wait();
 
 }
-<<<<<<< HEAD
-void skillsAuton(){
-  chassis.pid_drive_set(39, DRIVE_SPEED, true); // Goes towards the preload area
-  pros::delay(500);
-  FrontIntake.move(127);
-  pros::delay(2000);
-  chassis.pid_turn_set(-42, TURN_SPEED);
-  pros::delay(300);
-  chassis.pid_drive_set(11, DRIVE_SPEED, true); // Goes towards the preload area
-  pros::delay(300);
-  FrontIntake.move(-127);
-  pros::delay(3000);
-  chassis.pid_drive_set(-16, DRIVE_SPEED, true);
-  pros::delay(300);
-  chassis.pid_turn_set(-48, TURN_SPEED);
-  pros::delay(300);
-  chassis.pid_drive_set(50, DRIVE_SPEED, true);
-  pros::delay(300);
-  chassis.pid_turn_set(90, TURN_SPEED);
-  pros::delay(300);
-  FrontIntake.move(127);
-  pros::delay(2000);
-  chassis.pid_drive_set(-17, DRIVE_SPEED, true);
-  pros::delay(300);
-  chassis.pid_turn_set(-90, TURN_SPEED);
-  pros::delay(300);
-  chassis.pid_drive_set(17, DRIVE_SPEED, true);
-  pros::delay(300);
-  chassis.pid_turn_set(-90, TURN_SPEED);
-  pros::delay(300);
-=======
 
 void BruinRightAuto(){
   chassis.pid_drive_set(14, DRIVE_SPEED ); // Goes towards the preload area
@@ -698,5 +667,4 @@ void Skills(){
   // PID_Strafe(-80, 100);
   // pros::delay(500);
   // PID_Strafe(40,  100);
->>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7
 }
