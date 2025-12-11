@@ -67,7 +67,7 @@ void updateOdom() {
     //--------------------------
     // Read tracking wheels
     //--------------------------
-    double L_raw = LVerticalTracker.get_position() * VERT_TPI;
+    double L_raw = -LVerticalTracker.get_position() * VERT_TPI;
     double R_raw = RVerticalTracker.get_position() * VERT_TPI;
     double H_raw = HorizontalTracker.get_position() * HORIZ_TPI;
 
@@ -114,14 +114,19 @@ void updateOdom() {
     //--------------------------
     // Rotate into world frame
     //--------------------------
+    // Transform robot frame → field frame
     double cosT = std::cos(odomTheta);
     double sinT = std::sin(odomTheta);
 
-    double dX = forward * sinT + strafe * cosT;
-    double dY = forward * cosT - strafe * sinT;
+    // YOUR FIX IS HERE ↓↓↓
+    // X was inverted — so multiply by -1
+    double dX = -(forward * sinT + strafe * cosT);
+    double dY =   forward * cosT - strafe * sinT;
 
-    odomX += dY;      // Y is actually forward
-    odomY += -dX;     // X is left/right
+    // Apply deltas
+    odomX += dX;
+    odomY += dY;
+
 }
 
 

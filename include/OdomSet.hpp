@@ -10,3 +10,4 @@ void initOdom();
 void updateOdom();
 static double getHeadingRad();
 void odomTask();
+void resetOdom();

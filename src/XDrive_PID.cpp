@@ -44,14 +44,14 @@ void DriveToPoint_PID(double targetX,
                       double slew)
 {
     // Translation PID
-    const double kP = 4.0;
+    const double kP = 4.2;
     const double kI = 0.002;
-    const double kD = 0.5;
+    const double kD = 0.3;
 
     // Rotation PID
-    const double kP_rot = 3.0;
+    const double kP_rot = 2.0;
     const double kI_rot = 0.0;
-    const double kD_rot = 0.2;
+    const double kD_rot = 0.4;
 
     double targetHeading = targetHeadingDeg * DEG2RAD;
 
@@ -154,6 +154,22 @@ void DriveToPoint_PID(double targetX,
         FR1.move(fr);  FR2.move(fr);
         BL1.move(bl);  BL2.move(bl);
         BR1.move(br);  BR2.move(br);
+
+        pros::lcd::print(0, "Odom X:%.2f  Y:%.2f", odomX, odomY);
+        pros::lcd::print(1, "dx:%.2f  dy:%.2f", dx, dy);
+        pros::lcd::print(2, "fwdErr:%.2f  strErr:%.2f", fwdErr, strafeErr);
+        pros::lcd::print(3, "rotErr:%.2f deg", rotErr * RAD2DEG);
+
+        pros::lcd::print(4, "fwdPow:%.2f strPow:%.2f rotPow:%.2f",
+            fwdPower, strafePower, rotPower);
+
+        pros::lcd::print(5, "FL:%.1f FR:%.1f", fl, fr);
+        pros::lcd::print(6, "BL:%.1f BR:%.1f", bl, br);
+
+        master.print(0, 0, "X%.1f Y%.1f", odomX, odomY);
+        master.print(1, 0, "F%.1f S%.1f", fwdErr, strafeErr);
+        master.print(2, 0, "Rot%.1f", rotErr * RAD2DEG);
+
 
         pros::delay(15);
     }

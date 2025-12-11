@@ -2,6 +2,7 @@
 #include <math.h>
 #include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
+#include "OdomSet.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
 
@@ -133,6 +134,7 @@ void competition_initialize() {
  */
 void autonomous() {
   pros::Task Myodom(odomTask);
+  resetOdom();
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
@@ -266,6 +268,33 @@ void opcontrol() {
   
 
   while (true) {
+
+    // // ===========================
+    //     // ODOM DEBUG PRINTING
+    //     // ===========================
+    //     pros::lcd::print(0, "X: %.2f   Y: %.2f", odomX, odomY);
+    //     pros::lcd::print(1, "Theta: %.2f deg", odomTheta * 180.0 / M_PI);
+
+    //     pros::lcd::print(2, "L: %.3f  R: %.3f  H: %.3f",
+    //         -LVerticalTracker.get_position() * VERT_TPI,
+    //         RVerticalTracker.get_position() * VERT_TPI,
+    //         HorizontalTracker.get_position() * HORIZ_TPI
+    //     );
+
+    //     pros::lcd::print(3, "IMU: %.2f deg", IMU.get_rotation());
+
+    //     // // Additional robot-frame debug data
+    //     // pros::lcd::print(4, "ForwardErr: %.2f", debug_forward);
+    //     // pros::lcd::print(5, "StrafeErr: %.2f", debug_strafe);
+
+    //     // Controller debug
+    //     master.print(0, 0, "X:%.1f Y:%.1f", odomX, odomY);
+    //     master.print(1, 0, "Th:%.1f", odomTheta * 180 / M_PI);
+    //     master.print(2, 0, "L:%.1f R:%.1f", 
+    //         LVerticalTracker.get_position() * VERT_TPI,
+    //         RVerticalTracker.get_position() * VERT_TPI
+    //     );
+
     ArmAction();
     IntakeLiftToggle();
     // Gives you some extras to make EZ-Template ezier
