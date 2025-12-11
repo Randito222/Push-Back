@@ -1,130 +1,141 @@
 #include "main.h"
-#include "subsystems.hpp"
 #include <cmath>
 
-// ===========================
-//  TRACKING WHEEL CONSTANTS
-//  (EDIT THESE FOR YOUR BOT)
-// ===========================
+//=============================
+// CONSTANTS
+//=============================
 
-// Left vertical tracking wheel (forward)
-constexpr double L_DIAM_IN   = 2.25;      // inches
-constexpr double L_TICKS_REV = 36000.0;   // sensor ticks per rev
+// Convert degrees <-> radians
+constexpr double DEG2RAD = M_PI / 180.0;
+constexpr double RAD2DEG = 180.0 / M_PI;
 
-// Right vertical tracking wheel (forward)
-constexpr double R_DIAM_IN   = 2.25;
-constexpr double R_TICKS_REV = 36000.0;
+// Wheel diameters
+constexpr double VERT_DIAM = 2.75;   // left / right wheels
+constexpr double HORIZ_DIAM = 2.00;  // horizontal wheel
 
-// Horizontal tracking wheel (strafe)
-constexpr double H_DIAM_IN   = 1.25;     
-constexpr double H_TICKS_REV = 36000.0;
+// Circumferences
+constexpr double VERT_CIRC = VERT_DIAM * M_PI;
+constexpr double HORIZ_CIRC = HORIZ_DIAM * M_PI;
 
-// Precomputed tick→inch scale factors
-constexpr double L_TICKS_TO_IN = (L_DIAM_IN * M_PI) / L_TICKS_REV;
-constexpr double R_TICKS_TO_IN = (R_DIAM_IN * M_PI) / R_TICKS_REV;
-constexpr double H_TICKS_TO_IN = (H_DIAM_IN * M_PI) / H_TICKS_REV;
+// Ticks → inches conversion
+constexpr double TPR = 36000.0;
+constexpr double VERT_TPI = VERT_CIRC / TPR;
+constexpr double HORIZ_TPI = HORIZ_CIRC / TPR;
 
-// Horizontal tracking wheel offset from robot center (inches).
-// + if the wheel is to the LEFT of the center, - if to the RIGHT.
-// Measure from robot centerline to the wheel axle.
-constexpr double H_SIDE_OFFSET_IN = 3.0;   // <<< MEASURE & TUNE THIS
+// TRACKING WHEEL ANGLES
+// Left vertical wheel is angled +45°
+// Right vertical wheel is angled –45°
+constexpr double LEFT_ANGLE  =  45.0 * DEG2RAD;
+constexpr double RIGHT_ANGLE = -45.0 * DEG2RAD;
 
-// ===========================
-//  GLOBAL ODOM STATE
-// ===========================
+// Precompute sines/cosines
+ double L_COS = std::cos(LEFT_ANGLE);
+ double L_SIN = std::sin(LEFT_ANGLE);
+ double R_COS = std::cos(RIGHT_ANGLE);
+ double R_SIN = std::sin(RIGHT_ANGLE);
 
-// Field coordinates in inches, heading in radians
-double odomX      = 0.0;
-double odomY      = 0.0;
-double odomTheta  = 0.0;   // radians, CCW, 0 = field "forward"
+// Distance from robot center → horizontal wheel (sideways offset)
+constexpr double H_OFFSET = 0.0; // set if wheel is NOT centered
 
-double &xPos   = odomX;
-double &yPos   = odomY;
-double &theta  = odomTheta;
+//=============================
+// GLOBAL STATE
+//=============================
+double odomX = 0;
+double odomY = 0;
+double odomTheta = 0;  // radians
 
-// Previous wheel distances (inches)
-static double lastL = 0.0;
-static double lastR = 0.0;
-static double lastH = 0.0;
+double lastL = 0;
+double lastR = 0;
+double lastH = 0;
 
-// Previous heading (radians)
-static double lastHeading = 0.0;
+double lastHeading = 0;
 
-// Helper: IMU heading in radians (wrap to [-pi, pi])
-static double getHeadingRad() {
-  double deg = IMU.get_rotation();          // [-180, 180] typically
-  // wrap just in case
-  while (deg > 180)  deg -= 360;
-  while (deg < -180) deg += 360;
-  return deg * M_PI / 180.0;
+
+//=============================
+// GET IMU ANGLE (radians)
+//=============================
+double imuHeading() {
+    return IMU.get_rotation() * DEG2RAD;
 }
 
-// ===========================
-//  ODOMETRY API
-// ===========================
 
-// Call once at start of auton (and whenever you want to reset pose)
-void resetOdom(double xInches, double yInches, double headingDeg) {
-    odomX = xInches;
-    odomY = yInches;
-    odomTheta = headingDeg * M_PI / 180.0;
+//=============================
+// UPDATE ODOMETRY
+//=============================
+void updateOdom() {
 
+    //--------------------------
+    // Read tracking wheels
+    //--------------------------
+    double L_raw = LVerticalTracker.get_position() * VERT_TPI;
+    double R_raw = RVerticalTracker.get_position() * VERT_TPI;
+    double H_raw = HorizontalTracker.get_position() * HORIZ_TPI;
+
+    // Compute deltas
+    double dL = L_raw - lastL;
+    double dR = R_raw - lastR;
+    double dH = H_raw - lastH;
+
+    lastL = L_raw;
+    lastR = R_raw;
+    lastH = H_raw;
+
+    //--------------------------
+    // IMU heading change
+    //--------------------------
+    double heading = imuHeading();
+    double dTheta = heading - lastHeading;
+    lastHeading = heading;
+    odomTheta = heading;
+
+    //--------------------------
+    // Convert wheel motion
+    // into robot forward/strafe
+    //--------------------------
+
+    // Left wheel components
+    double dL_forward = dL * L_COS;
+    double dL_strafe  = dL * L_SIN;
+
+    // Right wheel components
+    double dR_forward = dR * R_COS;
+    double dR_strafe  = dR * R_SIN;
+
+    // Combine for forward/strafe
+    double forward = (dL_forward + dR_forward) / 2.0;
+    double strafe  = (dL_strafe  + dR_strafe ) / 2.0;
+
+    // Add pure horizontal movement
+    strafe += dH;
+
+    // Rotation compensation (if wheel not centered)
+    strafe -= dTheta * H_OFFSET;
+
+    //--------------------------
+    // Rotate into world frame
+    //--------------------------
+    double cosT = std::cos(odomTheta);
+    double sinT = std::sin(odomTheta);
+
+    double dX = forward * sinT + strafe * cosT;
+    double dY = forward * cosT - strafe * sinT;
+
+    odomX += dY;      // Y is actually forward
+    odomY += -dX;     // X is left/right
+}
+
+
+//=============================
+// RESET ODOMETRY
+//=============================
+void resetOdom() {
+    odomX = odomY = 0;
+    lastL = lastR = lastH = 0;
+
+    odomTheta = imuHeading();
     lastHeading = odomTheta;
-
-    lastL = 0.0;
-    lastR = 0.0;
-    lastH = 0.0;
 
     LVerticalTracker.reset_position();
     RVerticalTracker.reset_position();
     HorizontalTracker.reset_position();
-}
-
-// Overload for zero pose
-void resetOdom() {
-    resetOdom(0.0, 0.0, 0.0);
-}
-
-// Call this in a 10–20ms loop (opcontrol task or auton task)
-void updateOdom() {
-    // 1) Read current ticks and convert to inches
-    double L_in = LVerticalTracker.get_position() * L_TICKS_TO_IN;
-    double R_in = RVerticalTracker.get_position() * R_TICKS_TO_IN;
-    double H_in = HorizontalTracker.get_position() * H_TICKS_TO_IN;
-
-    // 2) Compute deltas since last update
-    double dL = L_in - lastL;
-    double dR = R_in - lastR;
-    double dH = H_in - lastH;
-
-    lastL = L_in;
-    lastR = R_in;
-    lastH = H_in;
-
-    // 3) Heading from IMU
-    double heading = getHeadingRad();
-    double dTheta  = heading - lastHeading;
-    odomTheta      = heading;
-    lastHeading    = heading;
-
-    // 4) Robot-frame translation
-    // Forward is average of L & R vertical wheels
-    double forward = (dL + dR) / 2.0;
-
-    // Horizontal wheel measures strafe + rotation effect.
-    // Compensate for wheel offset:
-    double strafe = dH - dTheta * H_SIDE_OFFSET_IN;
-
-    // 5) Rotate robot-frame delta into field frame
-    double cosT = std::cos(odomTheta);
-    double sinT = std::sin(odomTheta);
-
-    // Coordinate convention:
-    //  - odomY: forward on field
-    //  - odomX: left on field
-    double dX =  forward * sinT + strafe * cosT;
-    double dY =  forward * cosT - strafe * sinT;
-
-    odomX += dX;
-    odomY += dY;
 }

@@ -21,8 +21,8 @@ inline pros::Motor Front_Left_1(-14); // Bottom Front Left motor
 inline pros::Motor Front_Left_2(13); // Top Front Left motor
 inline pros::Motor Back_Left_1(-12);  // Bottom Back Left motor
 inline pros::Motor Back_Left_2(11);  // Top Back Left motor 
-inline pros::Motor Front_Right_1(-17); // Bottom Front Right motor
-inline pros::Motor Front_Right_2(18); // Top Front Right motor
+inline pros::Motor Front_Right_1(18); // Bottom Front Right motor
+inline pros::Motor Front_Right_2(-17); // Top Front Right motor
 inline pros::Motor Back_Right_1(19);  // Bottom Back Right motor
 inline pros::Motor Back_Right_2(-20);  // Top Back Right motor
 

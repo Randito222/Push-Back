@@ -384,6 +384,10 @@ void measure_offsets() {
 // . . .
 
 void Tuning_PID(){
+  //odom_task.resume();
+  DriveToPoint_PID(0, 10, 0, 100, 100);
+  //DriveToPoint_PID(-20, 40, 0, 100, 200);
+  //DriveToPoint_PID(20, 10, 90, 100, 100);
   // PID_Movement(80, 100);
   // PID_Turn(90, 90);
   // PID_Strafe(-10, 90);
@@ -399,31 +403,31 @@ void Tuning_PID(){
 //   pros::delay(800);
 //   Arm.move_absolute(0,130);  // 
 
-FrontIntake.move(127);  // Stop the intake motor when R2 is pressed
+// FrontIntake.move(127);  // Stop the intake motor when R2 is pressed
 
-//PID_Movement(80, 70);
-chassis.pid_drive_set(30, 70);
-chassis.pid_wait();
+// //PID_Movement(80, 70);
+// chassis.pid_drive_set(30, 70);
+// chassis.pid_wait();
 
-chassis.pid_turn_set(-44,60);
-pros::delay(500);
+// chassis.pid_turn_set(-44,60);
+// pros::delay(500);
 
-chassis.pid_drive_set(15, 70);
-pros::delay(500);
+// chassis.pid_drive_set(15, 70);
+// pros::delay(500);
 
-FrontIntake.move(-90);
-pros::delay(500);
+// FrontIntake.move(-90);
+// pros::delay(500);
 
-FrontIntake.move(-90);
-pros::delay(500);
+// FrontIntake.move(-90);
+// pros::delay(500);
 
-FrontIntake.move(-90);
-pros::delay(3000);
+// FrontIntake.move(-90);
+// pros::delay(3000);
 
-IntakeLift.set_value(1);
-pros::delay(3000);
-IntakeLift.set_value(0);
-FrontIntake.move(0);
+// IntakeLift.set_value(1);
+// pros::delay(3000);
+// IntakeLift.set_value(0);
+// FrontIntake.move(0);
 }
 
 void AutonTesting(){

@@ -39,7 +39,7 @@ ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is para
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
-  Drive_Controls_task.resume(); // Start the drive control task
+  //Drive_Controls_task.resume(); // Start the drive control task
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
@@ -95,6 +95,7 @@ void initialize() {
   chassis.initialize();
   ez::as::initialize();
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
+  
 }
 
 /**
@@ -131,6 +132,7 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
+  pros::Task Myodom(odomTask);
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
@@ -260,8 +262,7 @@ void opcontrol() {
   // This is preference to what you like to drive on
   
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
-  int  IntakeLiftT = -1;
-  int KnownState = 0;
+
   
 
   while (true) {

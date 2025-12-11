@@ -255,15 +255,22 @@ void MatchLoading(){
 void ArmAction(){
   if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,130);  // Stop the intake motor when B is pressed
+    Arm.move_absolute(-570,110);  // Stop the intake motor when B is pressed
     KnownState=1;
     pros::delay(200);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
   }
+  else if (master.get_digital(DIGITAL_L1) == true && (IntakeLiftT == -1 || IntakeLiftT == 0)){
+    FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-570,110);  // Stop the intake motor when B is released
+    pros::delay(500);
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
   
+  }
   else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-700,130);  // Stop the intake motor when B is pressed
+    Arm.move_absolute(-700,110);  // Stop the intake motor when B is pressed
     KnownState=1;
     pros::delay(200);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
