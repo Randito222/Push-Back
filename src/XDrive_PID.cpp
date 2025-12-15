@@ -34,6 +34,13 @@ double slewRate(double target, double current, double rate) {
     return target;
 }
 
+void StopBase(){
+    FL1.move(0); FL2.move(0);
+    FR1.move(0); FR2.move(0);
+    BL1.move(0); BL2.move(0);
+    BR1.move(0); BR2.move(0);
+}
+
 //===================================================
 // PERFECT X-DRIVE PID WITH ODOMETRY
 //===================================================

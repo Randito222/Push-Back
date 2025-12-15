@@ -58,7 +58,7 @@ inline pros::Rotation HorizontalTracker(16); // Vertical tracking wheel on port 
 /**
 Pneumatics
 */
-inline pros::adi::DigitalOut TongueMech('H');
-inline pros::adi::DigitalOut DescoreLeft('F');
+inline pros::adi::DigitalOut TongueMech('B');
+inline pros::adi::DigitalOut DescoreLeft('C');
 //inline pros::adi::DigitalOut DescoreRight('C');
 inline pros::adi::DigitalOut IntakeLift('A');

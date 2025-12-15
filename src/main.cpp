@@ -3,6 +3,7 @@
 #include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
 #include "OdomSet.hpp"
+#include "XDrive_PID.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
 
@@ -15,7 +16,7 @@
 ez::Drive chassis(
     // These are your drive motors, the first motor is used for sensing!
     {-14, 13, -12,11},     // Left Chassis Ports (negative port will reverse it!)
-    {-17, 18, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
+    {18, -17, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
 
     2,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
@@ -82,12 +83,12 @@ void initialize() {
   //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
   //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
       // {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
-      // {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
-      // {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
-      {"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
+       {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
+       {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
+      //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
       // {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
       {"Skills\n\nAuton for Skills.", Skills},
-      {"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
+      //{"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
    });
 
 
@@ -133,8 +134,8 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  pros::Task Myodom(odomTask);
-  resetOdom();
+  //pros::Task Myodom(odomTask);
+  //resetOdom();
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
@@ -262,6 +263,7 @@ void ez_template_extras() {
  */
 void opcontrol() {
   // This is preference to what you like to drive on
+
   
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
 
@@ -297,6 +299,7 @@ void opcontrol() {
 
     ArmAction();
     IntakeLiftToggle();
+    MatchLoading();
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     //chassis.opcontrol_tank();
