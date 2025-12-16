@@ -93,3 +93,10 @@ void Drive_Controls_swap() {
     pros::delay(20); // Small delay to prevent CPU overload
   }
 }
+
+void odomTask() {
+    while (true) {
+        updateOdom();
+        pros::delay(20);
+    }
+}
