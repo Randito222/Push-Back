@@ -67,4 +67,4 @@ extern int BackIntakeControl;
 extern pros::Task Color_Mode_Task;
 extern pros::Task Color_Sorter_Task;
 extern pros::Task Drive_Controls_task;
-// extern pros::Task odom_task;
+extern pros::Task odom_task;

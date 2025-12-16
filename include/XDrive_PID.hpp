@@ -9,12 +9,17 @@ double slewRate(double target, double current, double maxDelta);
 void StopBase();
 
 // =============================
-// X-Drive Odometry PID
+// X-Drive PID
 // =============================
 void DriveToPoint_PID(
-    double targetX,
-    double targetY,
-    double targetHeadingDeg,
-    double maxSpeed,
-    double slew
+    double targetX_in,
+    double targetY_in,
+    double targetHeading_deg,
+    int    maxVolt      = 12000,
+    int    timeout_ms   = 3000,
+    double slewRateV    = 300
 );
+
+// =============================
+// X-Drive Odometry PID
+// =============================
