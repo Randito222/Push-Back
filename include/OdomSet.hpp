@@ -1,13 +1,16 @@
 #pragma once
 #include <cmath>
 
-// ---- Odometry position variables ----
-extern double &xPos;   // inches
-extern double &yPos ;   // inches
-extern double &theta;  // radians
+// =============================
+// Odometry State (GLOBAL)
+// =============================
+extern double odomX;      // inches
+extern double odomY;      // inches
+extern double odomTheta;  // radians
 
-void initOdom();
+// =============================
+// Odometry Functions
+// =============================
 void updateOdom();
-static double getHeadingRad();
-void odomTask();
 void resetOdom();
+void odomTask();

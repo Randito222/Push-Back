@@ -1,16 +1,34 @@
+#pragma once
 #include "subsystems.hpp"
-void setDrivePower(int fl, int fr, int bl, int br);
 
-void IntakeSpin();
+// =============================
+// Drive
+// =============================
+void setDrivePower(int fl, int fr, int bl, int br);
 void DriveControl();
 void DriveControlBackUp();
+
+// =============================
+// Intake / Mechanisms
+// =============================
+void IntakeSpin();
 void IntakeReverse();
-inline int  IntakeLiftT = -1;
+
+// Intake lift toggle state
+extern int IntakeLiftT;
 void IntakeLiftToggle();
+
+// =============================
+// Scoring / Pneumatics
+// =============================
 void descoreLeftT();
-void descoreRight();
+// void descoreRight();   // removed unless used
 void IntakeScoreToggle();
 void ScoringP();
 void MatchLoading();
-inline int KnownState = 0;
+
+// =============================
+// Arm
+// =============================
+extern int KnownState;
 void ArmAction();

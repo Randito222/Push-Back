@@ -1,286 +1,142 @@
+#include "Functions.hpp"
 #include "main.h"
-#include "subsystems.hpp"
-/*
+#include <cmath>
 
-Drive Controls
+// =============================
+// Globals (from header)
+// =============================
+int IntakeLiftT = -1;
+int KnownState  = 0;
 
-**/
-
+// =============================
+// Drive helpers
+// =============================
 void setDrivePower(int fl, int fr, int bl, int br) {
-  // Set all motors for each wheel group
   Front_Left_1.move(fl);
   Front_Left_2.move(fl);
-
   Front_Right_1.move(fr);
   Front_Right_2.move(fr);
-
   Back_Left_1.move(bl);
   Back_Left_2.move(bl);
-
   Back_Right_1.move(br);
   Back_Right_2.move(br);
-} 
-
-// void IntakeSpin() {
-//   // Spin the intake motor
-//   Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
-// }
-
-// Start by storing the robot's current heading as the initial target
-double targetAngle = IMU.get_heading();
-bool lastButtonState = false;  // Tracks the last state of the button to detect presses
-
-int slewDrive(int target, int current, int rate) {
-    if (current < target)
-        current += rate;
-    else if (current > target)
-        current -= rate;
-
-    // Snap when close
-    if (abs(target - current) < rate)
-        current = target;
-
-    return current;
 }
 
+// =============================
+// Driver control (FIELD CENTRIC)
+// =============================
 void DriveControl() {
+  static int fl = 0, fr = 0, bl = 0, br = 0;
+  constexpr int slew = 50;
 
-  // =============================
-    // Persistent power values
-    // =============================
-    static int flPower = 0;
-    static int frPower = 0;
-    static int blPower = 0;
-    static int brPower = 0;
+  double f = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+  double s = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+  double r = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
-    const int slewRate = 50;   // Lower = smoother, higher = more responsive
+  if (std::fabs(f) < 5) f = 0;
+  if (std::fabs(s) < 5) s = 0;
+  if (std::fabs(r) < 5) r = 0;
 
-    // =============================
-    // Controller input with deadzones
-    // =============================
-    double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-    double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-    double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+  double h = IMU.get_rotation() * M_PI / 180.0;
+  double tf =  f * cos(h) + s * sin(h);
+  double ts = -f * sin(h) + s * cos(h);
 
-    if (fabs(forward) < 5) forward = 0;
-    if (fabs(strafe)  < 5) strafe  = 0;
-    if (fabs(rotate)  < 5) rotate  = 0;
+  int tFL = tf + ts + r;
+  int tFR = tf - ts - r;
+  int tBL = tf - ts + r;
+  int tBR = tf + ts - r;
 
-    // =============================
-    // FIELD CENTRIC TRANSFORMATION
-    // =============================
-    double headingRad = IMU.get_rotation() * M_PI / 180.0;
-
-    double tempForward =  forward * cos(headingRad) + strafe * sin(headingRad);
-    double tempStrafe  = -forward * sin(headingRad) + strafe * cos(headingRad);
-
-    forward = tempForward;
-    strafe  = tempStrafe;
-
-    // =============================
-    // X-DRIVE MOTOR MIXING
-    // =============================
-    int flTarget = forward + strafe + rotate;
-    int frTarget = forward - strafe - rotate;
-    int blTarget = forward - strafe + rotate;
-    int brTarget = forward + strafe - rotate;
-
-    // =============================
-    // INTERNAL SLEW RATE LIMITING
-    // =============================
-    auto applySlew = [&](int target, int &current) {
-        if (current < target)
-            current += slewRate;
-        else if (current > target)
-            current -= slewRate;
-
-        // If close, snap to target
-        if (abs(target - current) < slewRate)
-            current = target;
-    };
-
-    applySlew(flTarget, flPower);
-    applySlew(frTarget, frPower);
-    applySlew(blTarget, blPower);
-    applySlew(brTarget, brPower);
-
-    // =============================
-    // Send power to motors
-    // =============================
-    setDrivePower(flPower, frPower, blPower, brPower);
-
-    pros::delay(20); // Delay to avoid overloading the CPU
-}
-
-void DriveControlBackUp() {
-
-  // =============================
-  // Persistent power values
-  // =============================
-  static int flPower = 0;
-  static int frPower = 0;
-  static int blPower = 0;
-  static int brPower = 0;
-
-  const int slewRate = 50;   // Lower = smoother, higher = more responsive
-
-  // =============================
-  // Controller input with deadzones
-  // =============================
-  double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-  double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-  double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-
-  if (fabs(forward) < 5) forward = 0;
-  if (fabs(strafe)  < 5) strafe  = 0;
-  if (fabs(rotate)  < 5) rotate  = 0;
-
-  // =============================
-  // X-DRIVE MOTOR MIXING
-  // =============================
-  int flTarget = forward + strafe + rotate;
-  int frTarget = forward - strafe - rotate;
-  int blTarget = forward - strafe + rotate;
-  int brTarget = forward + strafe - rotate;
-
-  // =============================
-  // INTERNAL SLEW RATE LIMITING
-  // =============================
-  auto applySlew = [&](int target, int &current) {
-      if (current < target)
-          current += slewRate;
-      else if (current > target)
-          current -= slewRate;
-
-      // If close, snap to target
-      if (abs(target - current) < slewRate)
-            current = target;
+  auto slewApply = [&](int tgt, int &cur) {
+    if (cur < tgt) cur += slew;
+    else if (cur > tgt) cur -= slew;
+    if (std::abs(tgt - cur) < slew) cur = tgt;
   };
 
-  applySlew(flTarget, flPower);
-  applySlew(frTarget, frPower);
-  applySlew(blTarget, blPower);
-  applySlew(brTarget, brPower);
+  slewApply(tFL, fl);
+  slewApply(tFR, fr);
+  slewApply(tBL, bl);
+  slewApply(tBR, br);
 
-  // =============================
-  // Send power to motors
-  // =============================
-  setDrivePower(flPower, frPower, blPower, brPower);
-
-  // Delay to avoid overloading the CPU
-  pros::delay(28/0);
+  setDrivePower(fl, fr, bl, br);
 }
 
+// =============================
+// Driver control (ROBOT CENTRIC)
+// =============================
+void DriveControlBackUp() {
+  static int fl = 0, fr = 0, bl = 0, br = 0;
+  constexpr int slew = 50;
 
-// void IntakeReverse(){
-//   Intake.move_velocity(-200);
-// }
+  int f = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+  int s = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+  int r = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
-void IntakeLiftToggle(){
-  if(master.get_digital_new_press(DIGITAL_DOWN)){
-      IntakeLiftT *= -1;
-      if(IntakeLiftT == 1){
-        IntakeLift.set_value(true);
-      }
-      else{
-        IntakeLift.set_value(false);
-      }
-    }
+  int tFL = f + s + r;
+  int tFR = f - s - r;
+  int tBL = f - s + r;
+  int tBR = f + s - r;
+
+  auto slewApply = [&](int tgt, int &cur) {
+    if (cur < tgt) cur += slew;
+    else if (cur > tgt) cur -= slew;
+    if (std::abs(tgt - cur) < slew) cur = tgt;
+  };
+
+  slewApply(tFL, fl);
+  slewApply(tFR, fr);
+  slewApply(tBL, bl);
+  slewApply(tBR, br);
+
+  setDrivePower(fl, fr, bl, br);
 }
 
-int DescoreLV = -1;
-void descoreLeftT(){
-  DescoreLV*=-1;
-
-  if (DescoreLV==1){
-    DescoreLeft.set_value(1);
-  }
-
-  else{
-    DescoreLeft.set_value(0);
+// =============================
+// Intake / mechanisms
+// =============================
+void IntakeSpin() {
+  FrontIntake.move(127);
 }
+
+void IntakeReverse() {
+  FrontIntake.move(-127);
 }
-// int DescoreRV = -1;
-// void descoreRight(){
-//   DescoreRV*=-1;
 
-//   if (DescoreRV==1){
-//     DescoreRight.set_value(1);
-//   }
-
-//   else{
-//     DescoreRight.set_value(0);
-// }
-// }
-
-// int ScoreP = -1;
-// void ScoringP(){
-//   ScoreP*=-1;
-
-//   if (ScoreP==1){
-//     ScorePiston.set_value(1);
-//   }
-
-//   else{
-//     ScorePiston.set_value(0);
-// }
-// }
-
-int IntakeScoreV = -1;
-void IntakeScoreToggle(){
-  IntakeScoreV*=-1;
-
-  if (IntakeScoreV==1){
-    IntakeLift.set_value(1);
-  }
-
-  else{
-    IntakeLift.set_value(0);
+void IntakeLiftToggle() {
+  if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
+    IntakeLiftT *= -1;
+    IntakeLift.set_value(IntakeLiftT == 1);
   }
 }
 
-int MatchLoadV = -1;
-void MatchLoading(){
-  if(master.get_digital_new_press(DIGITAL_RIGHT)){
-    MatchLoadV*=-1;
+void descoreLeftT() {
+  static int state = -1;
+  state *= -1;
+  DescoreLeft.set_value(state == 1);
+}
 
-    if (MatchLoadV==1){
-      TongueMech.set_value(1);
-    }
+void IntakeScoreToggle() {
+  static int state = -1;
+  state *= -1;
+  IntakeLift.set_value(state == 1);
+}
 
-    else{
-      TongueMech.set_value(0);
-    }
+void MatchLoading() {
+  static int state = -1;
+  if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
+    state *= -1;
+    TongueMech.set_value(state == 1);
   }
 }
 
-void ArmAction(){
-  if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
-    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,190);  // Stop the intake motor when B is pressed
-    KnownState=1;
-    pros::delay(200);
-    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-  }
-  else if (master.get_digital(DIGITAL_L1) == true && (IntakeLiftT == -1 || IntakeLiftT == 0)){
-    FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,190);  // Stop the intake motor when B is released
-    pros::delay(500);
-    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
-  
-  }
-  else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
-    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-700,150);  // Stop the intake motor when B is pressed
-    KnownState=1;
-    pros::delay(200);
-    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-  }
-  else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
-    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
-    KnownState=0;
-    pros::delay(200);
-
+// =============================
+// Arm
+// =============================
+void ArmAction() {
+  if (master.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
+    Arm.move_absolute(-600, 180);
+    KnownState = 1;
+  } else if (KnownState == 1) {
+    Arm.move_absolute(0, 180);
+    KnownState = 0;
   }
 }
