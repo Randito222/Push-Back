@@ -434,8 +434,9 @@ void Tuning_PID(){
 
 void AutonTesting(){
 
-  chassis.pid_drive_set(144, DRIVE_SPEED, true);
-  chassis.pid_wait();
+  DriveToPoint_OdomPID(1, 10, 0);
+  // chassis.pid_drive_set(144, DRIVE_SPEED, true);
+  // chassis.pid_wait();
   // // === MOVE 1: Forward 36 inches ===
   // pros::Task move1([]() {
   //   x_drive_pid_task(36.0, 0.0, 0.0); // Move to (36, 0) facing 0 degrees

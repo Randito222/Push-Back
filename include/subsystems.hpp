@@ -48,9 +48,9 @@ inline pros::Imu IMU(6); // IMU sensor on port 6
 inline pros::Imu IMU2(2); // IMU sensor on port 2
 inline pros::Optical OP1(7); // Optical sensor on port 7
 inline pros::Optical OP2(9); // Optical sensor on port 9
-inline pros::Rotation LVerticalTracker(15); // Left Horizontal tracking wheel on port 15
-inline pros::Rotation RVerticalTracker(9); // Right Horizontal tracking wheel on port 8
-inline pros::Rotation HorizontalTracker(16); // Vertical tracking wheel on port 16
+inline pros::Rotation LVerticalTracker(15); // Left Vertical tracking wheel on port 15
+inline pros::Rotation RVerticalTracker(9); // Right Vertical tracking wheel on port 8
+inline pros::Rotation HorizontalTracker(16); // Horizontal tracking wheel on port 16
 
 // inline pros::Motor intake(1);
 // inline pros::adi::DigitalIn limit_switch('A');

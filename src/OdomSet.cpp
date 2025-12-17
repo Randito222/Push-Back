@@ -1,6 +1,6 @@
-#pragma once
-#include "pros/apix.h"
+#include "OdomSet.hpp"
 #include "subsystems.hpp"
+#include "pros/apix.h"
 #include <cmath>
 
 // =============================
@@ -16,45 +16,44 @@ constexpr double DEG2RAD = M_PI / 180.0;
 constexpr double LEFT_ANGLE  = -45.0 * DEG2RAD;
 constexpr double RIGHT_ANGLE =  45.0 * DEG2RAD;
 
-// Offsets (center of robot → wheel contact)
-constexpr double HORZ_OFFSET = 4.0;   // inches (measure this)
+// Offset: center of robot → horizontal wheel
+constexpr double HORZ_OFFSET = 4.0;   // inches (MEASURE THIS)
 
-struct OdomState {
-    double x = 0;
-    double y = 0;
-    double headingDeg = 0;
-};
-
-OdomState Myodom;
+// =============================
+// Odometry State (DEFINITION)
+// =============================
+double odomX = 0.0;       // inches
+double odomY = 0.0;       // inches
+double odomTheta = 0.0;   // radians
 
 // =============================
 // Utility Functions
 // =============================
-
-double wheelCirc(double d) {
+static double wheelCirc(double d) {
     return M_PI * d;
 }
 
-double ticksToInches(double ticks, double diam) {
+static double ticksToInches(double ticks, double diam) {
     return (ticks / TICKS_REV) * wheelCirc(diam);
 }
 
 // =============================
 // Last Sensor Values
 // =============================
+static double lastVL = 0.0;
+static double lastVR = 0.0;
+static double lastH  = 0.0;
+static double lastHeading = 0.0;
 
-double lastVL = 0;
-double lastVR = 0;
-double lastH  = 0;
-double lastHeading = 0;
-
-
-void updateOdometry() {
+// =============================
+// Odometry Update
+// =============================
+void updateOdom() {
 
     // --- Read sensors ---
-    double vlNow = ticksToInches(LVerticalTracker.get_position(),  VERT_DIAM);
-    double vrNow = ticksToInches(RVerticalTracker.get_position(), VERT_DIAM);
-    double hNow  = ticksToInches(HorizontalTracker.get_position(),     HORZ_DIAM);
+    double vlNow = ticksToInches(-LVerticalTracker.get_position(),  VERT_DIAM);
+    double vrNow = ticksToInches(RVerticalTracker.get_position(),  VERT_DIAM);
+    double hNow  = ticksToInches(HorizontalTracker.get_position(), HORZ_DIAM);
 
     double heading = IMU.get_rotation() * DEG2RAD;
 
@@ -70,61 +69,60 @@ void updateOdometry() {
     lastHeading = heading;
 
     // =============================
-    // Solve robot-relative motion
+    // Robot-relative motion
     // =============================
-
-    // Vertical wheels → vector reconstruction
-    // d = dx*cos(θ) + dy*sin(θ)
-
+    // Vector reconstruction from ±45° wheels
     double dX = (dVL * cos(LEFT_ANGLE) + dVR * cos(RIGHT_ANGLE)) / 2.0;
     double dY = (dVL * sin(LEFT_ANGLE) + dVR * sin(RIGHT_ANGLE)) / 2.0;
 
-    // Horizontal wheel correction for rotation
+    // Horizontal wheel rotation compensation
     if (fabs(dTheta) > 1e-6) {
         dX += dTheta * HORZ_OFFSET;
     }
 
     // =============================
-    // Rotate into field coordinates
+    // Field-relative update
     // =============================
     double sinH = sin(heading);
     double cosH = cos(heading);
 
-    Myodom.x += dX * cosH - dY * sinH;
-    Myodom.y += dX * sinH + dY * cosH;
+    odomX += dX * cosH - dY * sinH;
+    odomY += dX * sinH + dY * cosH;
 
-    Myodom.headingDeg = heading / DEG2RAD;
+    odomTheta = heading;
 }
 
-void odomTask(void*) {
+// =============================
+// Odometry Task
+// =============================
+void odomTask() {
     while (true) {
-        updateOdometry();
+        updateOdom();
         pros::delay(10);
     }
 }
 
-void resetOdom(double x = 0, double y = 0, double headingDeg = 0) {
+// =============================
+// Reset Odometry
+// =============================
+void resetOdom() {
 
-    Myodom.x = x;
-    Myodom.y = y;
-    Myodom.headingDeg = headingDeg;
+    odomX = 0.0;
+    odomY = 0.0;
+    odomTheta = 0.0;
 
-    IMU.set_rotation(headingDeg);
+    IMU.set_rotation(0);
 
     LVerticalTracker.reset_position();
     RVerticalTracker.reset_position();
     HorizontalTracker.reset_position();
 
-    lastVL = lastVR = lastH = 0;
-    lastHeading = headingDeg * DEG2RAD;
+    lastVL = lastVR = lastH = 0.0;
+    lastHeading = 0.0;
 }
 
 void printOdom() {
-    pros::lcd::print(0, "X: %.2f", Myodom.x);
-    pros::lcd::print(1, "Y: %.2f", Myodom.y);
-    pros::lcd::print(2, "H: %.2f", Myodom.headingDeg);
+    pros::lcd::print(0, "X: %.2f", odomX);
+    pros::lcd::print(1, "Y: %.2f", odomY);
+    pros::lcd::print(2, "H: %.2f", odomTheta);
 }
-
-
-
-

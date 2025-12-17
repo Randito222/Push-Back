@@ -103,7 +103,7 @@ static double imuHeading() {
 // =============================
 // Stop
 // =============================
-static void stopDrive() {
+void stopDrive() {
     FL1.move_voltage(0); FL2.move_voltage(0);
     FR1.move_voltage(0); FR2.move_voltage(0);
     BL1.move_voltage(0); BL2.move_voltage(0);
@@ -169,6 +169,100 @@ void DriveToPoint_PID(
         br = Myslew(tBR, br, slewRateV);
 
         // Apply
+        FL1.move_voltage(fl); FL2.move_voltage(fl);
+        FR1.move_voltage(fr); FR2.move_voltage(fr);
+        BL1.move_voltage(bl); BL2.move_voltage(bl);
+        BR1.move_voltage(br); BR2.move_voltage(br);
+
+        pros::delay(10);
+    }
+
+    stopDrive();
+}
+
+void DriveToPoint_OdomPID(
+    double targetX,
+    double targetY,
+    double targetHeading,
+    int    maxVolt,
+    int    timeout_ms,
+    double slewRateV
+) {
+    // =============================
+    // PID tuning (starter values)
+    // =============================
+    PIDTest xPID    {900, 0.0, 350};
+    PIDTest yPID    {900, 0.0, 350};
+    PIDTest turnPID {80,  0.0, 500};   // heading PID (degrees)
+
+    double fl = 0, fr = 0, bl = 0, br = 0;
+    int settled = 0;
+    int start = pros::millis();
+
+    while (pros::millis() - start < timeout_ms) {
+
+        // =============================
+        // ODOM ERRORS (FIELD-CENTRIC)
+        // =============================
+        double xErr = targetX - odomX;
+        double yErr = targetY - odomY;
+
+        // heading in degrees
+        double headingDeg = odomTheta * 180.0 / M_PI;
+        double tErr = targetHeading - headingDeg;
+
+        // wrap heading error to [-180, 180]
+        while (tErr > 180) tErr -= 360;
+        while (tErr < -180) tErr += 360;
+
+        // =============================
+        // SETTLING CHECK
+        // =============================
+        if (std::fabs(xErr) < 0.5 &&
+            std::fabs(yErr) < 0.5 &&
+            std::fabs(tErr) < 1.0)
+        {
+            settled += 10;
+            if (settled > 200) break;
+        } else {
+            settled = 0;
+        }
+
+        // =============================
+        // FIELD → ROBOT TRANSFORM
+        // =============================
+        double sinH = std::sin(odomTheta);
+        double cosH = std::cos(odomTheta);
+
+        double robotX =  xErr * cosH + yErr * sinH;
+        double robotY = -xErr * sinH + yErr * cosH;
+
+        // =============================
+        // PID OUTPUTS
+        // =============================
+        double xOut = clamp(xPID.step(robotX), -maxVolt, maxVolt);
+        double yOut = clamp(yPID.step(robotY), -maxVolt, maxVolt);
+        double tOut = clamp(turnPID.step(tErr),  -maxVolt, maxVolt);
+
+        // =============================
+        // X-DRIVE MIXING
+        // =============================
+        double tFL = yOut + xOut + tOut;
+        double tFR = yOut - xOut - tOut;
+        double tBL = yOut - xOut + tOut;
+        double tBR = yOut + xOut - tOut;
+
+        // =============================
+        // SLEW RATE
+        // =============================
+        fl = Myslew(tFL, fl, slewRateV);
+        fr = Myslew(tFR, fr, slewRateV);
+        bl = Myslew(tBL, bl, slewRateV);
+        br = Myslew(tBR, br, slewRateV);
+
+        // =============================
+        // APPLY VOLTAGE
+        // =============================
         FL1.move_voltage(fl); FL2.move_voltage(fl);
         FR1.move_voltage(fr); FR2.move_voltage(fr);
         BL1.move_voltage(bl); BL2.move_voltage(bl);

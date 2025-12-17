@@ -18,7 +18,7 @@ ez::Drive chassis(
     {-14, 13, -12,11},     // Left Chassis Ports (negative port will reverse it!)
     {18, -17, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
 
-    2,      // IMU Port
+    6,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -86,7 +86,7 @@ void initialize() {
   //     {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
   //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
   //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
-      // {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
        {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
        {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
       //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
@@ -138,12 +138,10 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  //pros::Task Myodom(odomTask);
-  //resetOdom();
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
-  chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
+  //chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
 
   /*
@@ -274,32 +272,8 @@ void opcontrol() {
   
 
   while (true) {
-
-    // // ===========================
-    //     // ODOM DEBUG PRINTING
-    //     // ===========================
-    //     pros::lcd::print(0, "X: %.2f   Y: %.2f", odomX, odomY);
-    //     pros::lcd::print(1, "Theta: %.2f deg", odomTheta * 180.0 / M_PI);
-
-    //     pros::lcd::print(2, "L: %.3f  R: %.3f  H: %.3f",
-    //         -LVerticalTracker.get_position() * VERT_TPI,
-    //         RVerticalTracker.get_position() * VERT_TPI,
-    //         HorizontalTracker.get_position() * HORIZ_TPI
-    //     );
-
-    //     pros::lcd::print(3, "IMU: %.2f deg", IMU.get_rotation());
-
-    //     // // Additional robot-frame debug data
-    //     // pros::lcd::print(4, "ForwardErr: %.2f", debug_forward);
-    //     // pros::lcd::print(5, "StrafeErr: %.2f", debug_strafe);
-
-    //     // Controller debug
-    //     master.print(0, 0, "X:%.1f Y:%.1f", odomX, odomY);
-    //     master.print(1, 0, "Th:%.1f", odomTheta * 180 / M_PI);
-    //     master.print(2, 0, "L:%.1f R:%.1f", 
-    //         LVerticalTracker.get_position() * VERT_TPI,
-    //         RVerticalTracker.get_position() * VERT_TPI
-    //     );
+    printOdom();
+   
 
     ArmAction();
     IntakeLiftToggle();

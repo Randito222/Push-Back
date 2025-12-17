@@ -14,3 +14,4 @@ extern double odomTheta;  // radians
 void updateOdom();
 void resetOdom();
 void odomTask();
+void printOdom();
