@@ -109,7 +109,7 @@ void DriveControl() {
     // =============================
     setDrivePower(flPower, frPower, blPower, brPower);
 
-    pros::delay(20); // Delay to avoid overloading the CPU
+    pros::delay(50); // Delay to avoid overloading the CPU
 }
 
 void DriveControlBackUp() {
@@ -168,7 +168,7 @@ void DriveControlBackUp() {
   setDrivePower(flPower, frPower, blPower, brPower);
 
   // Delay to avoid overloading the CPU
-  pros::delay(28/0);
+  pros::delay(20);
 }
 
 

@@ -1,146 +1,116 @@
-#include "main.h"
+#include "OdomSet.hpp"
+#include "subsystems.hpp"
+#include "pros/apix.h"
 #include <cmath>
 
-//=============================
-// CONSTANTS
-//=============================
+// =============================
+// Wheel geometry
+// =============================
+constexpr double VERT_DIAM_IN = 2.75;   // vertical tracking wheels
+constexpr double HORZ_DIAM_IN = 2.00;   // horizontal tracking wheel
+constexpr double TICKS_REV    = 360.0;  // Rotation sensor: degrees per revolution
 
-// Convert degrees <-> radians
 constexpr double DEG2RAD = M_PI / 180.0;
 constexpr double RAD2DEG = 180.0 / M_PI;
 
-// Wheel diameters
-constexpr double VERT_DIAM = 2.75;   // left / right wheels
-constexpr double HORIZ_DIAM = 2.00;  // horizontal wheel
+// =============================
+// Odom State
+// =============================
+double odomX = 0.0;
+double odomY = 0.0;
+double odomTheta = 0.0;
 
-// Circumferences
-constexpr double VERT_CIRC = VERT_DIAM * M_PI;
-constexpr double HORIZ_CIRC = HORIZ_DIAM * M_PI;
-
-// Ticks → inches conversion
-constexpr double TPR = 36000.0;
-constexpr double VERT_TPI = VERT_CIRC / TPR;
-constexpr double HORIZ_TPI = HORIZ_CIRC / TPR;
-
-// TRACKING WHEEL ANGLES
-// Left vertical wheel is angled +45°
-// Right vertical wheel is angled –45°
-constexpr double LEFT_ANGLE  =  45.0 * DEG2RAD;
-constexpr double RIGHT_ANGLE = -45.0 * DEG2RAD;
-
-// Precompute sines/cosines
- double L_COS = std::cos(LEFT_ANGLE);
- double L_SIN = std::sin(LEFT_ANGLE);
- double R_COS = std::cos(RIGHT_ANGLE);
- double R_SIN = std::sin(RIGHT_ANGLE);
-
-// Distance from robot center → horizontal wheel (sideways offset)
-constexpr double H_OFFSET = 0.0; // set if wheel is NOT centered
-
-//=============================
-// GLOBAL STATE
-//=============================
-double odomX = 0;
-double odomY = 0;
-double odomTheta = 0;  // radians
-
-double lastL = 0;
-double lastR = 0;
-double lastH = 0;
-
-double lastHeading = 0;
-
-
-//=============================
-// GET IMU ANGLE (radians)
-//=============================
-double imuHeading() {
-    return IMU.get_rotation() * DEG2RAD;
+// =============================
+// Helpers
+// =============================
+static double wheelCirc(double diamIn) {
+  return M_PI * diamIn;
 }
 
+static double ticksToInches(double ticksDeg, double diamIn) {
+  // Rotation sensor returns degrees
+  return (ticksDeg / 360.0) * wheelCirc(diamIn);
+}
 
-//=============================
-// UPDATE ODOMETRY
-//=============================
+static double wrapRad(double a) {
+  while (a > M_PI) a -= 2 * M_PI;
+  while (a < -M_PI) a += 2 * M_PI;
+  return a;
+}
+
+// =============================
+// Last readings
+// =============================
+static double lastVL = 0.0;
+static double lastVR = 0.0;
+static double lastH  = 0.0;
+static double lastHeading = 0.0;
+
+// =============================
+// Update
+// =============================
 void updateOdom() {
+  // Read sensors (apply sign flips here ONCE if needed)
+  // Forward should be + for BOTH vertical wheels after sign flips.
+  const double vlNow = ticksToInches(-LVerticalTracker.get_position(), VERT_DIAM_IN);
+  const double vrNow = ticksToInches(RVerticalTracker.get_position(), VERT_DIAM_IN);
+  const double hNow  = ticksToInches(HorizontalTracker.get_position(), HORZ_DIAM_IN);
 
-    //--------------------------
-    // Read tracking wheels
-    //--------------------------
-    double L_raw = -LVerticalTracker.get_position() * VERT_TPI;
-    double R_raw = RVerticalTracker.get_position() * VERT_TPI;
-    double H_raw = HorizontalTracker.get_position() * HORIZ_TPI;
+  double heading = IMU.get_rotation() * DEG2RAD;  // degrees -> radians
+  if (!std::isfinite(heading)) return;
 
-    // Compute deltas
-    double dL = L_raw - lastL;
-    double dR = R_raw - lastR;
-    double dH = H_raw - lastH;
+  // Deltas
+  const double dVL = vlNow - lastVL;
+  const double dVR = vrNow - lastVR;
+  const double dH  = hNow  - lastH;
 
-    lastL = L_raw;
-    lastR = R_raw;
-    lastH = H_raw;
+  double dTheta = wrapRad(heading - lastHeading);
 
-    //--------------------------
-    // IMU heading change
-    //--------------------------
-    double heading = imuHeading();
-    double dTheta = heading - lastHeading;
-    lastHeading = heading;
-    odomTheta = heading;
+  lastVL = vlNow;
+  lastVR = vrNow;
+  lastH  = hNow;
+  lastHeading = heading;
 
-    //--------------------------
-    // Convert wheel motion
-    // into robot forward/strafe
-    //--------------------------
+  // =============================
+  // Robot-relative motion
+  // =============================
+  // Vertical wheels measure Y only
+  const double dY_robot = (dVL + dVR) * 0.5;
 
-    // Left wheel components
-    double dL_forward = dL * L_COS;
-    double dL_strafe  = dL * L_SIN;
+  // Horizontal wheel measures X only
+  const double dX_robot = dH;
 
-    // Right wheel components
-    double dR_forward = dR * R_COS;
-    double dR_strafe  = dR * R_SIN;
+  // =============================
+  // Robot -> Field transform using current heading
+  // =============================
+  const double sinH = std::sin(heading);
+  const double cosH = std::cos(heading);
 
-    // Combine for forward/strafe
-    double forward = (dL_forward + dR_forward) / 2.0;
-    double strafe  = (dL_strafe  + dR_strafe ) / 2.0;
+  odomX += dX_robot * cosH - dY_robot * sinH;
+  odomY += dX_robot * sinH + dY_robot * cosH;
 
-    // Add pure horizontal movement
-    strafe += dH;
-
-    // Rotation compensation (if wheel not centered)
-    strafe -= dTheta * H_OFFSET;
-
-    //--------------------------
-    // Rotate into world frame
-    //--------------------------
-    // Transform robot frame → field frame
-    double cosT = std::cos(odomTheta);
-    double sinT = std::sin(odomTheta);
-
-    // YOUR FIX IS HERE ↓↓↓
-    // X was inverted — so multiply by -1
-    double dX = -(forward * sinT + strafe * cosT);
-    double dY =   forward * cosT - strafe * sinT;
-
-    // Apply deltas
-    odomX += dX;
-    odomY += dY;
-
+  odomTheta = heading;
 }
 
+void resetOdom(double x, double y, double headingDeg) {
+  odomX = x;
+  odomY = y;
+  odomTheta = headingDeg * DEG2RAD;
 
-//=============================
-// RESET ODOMETRY
-//=============================
-void resetOdom() {
-    odomX = odomY = 0;
-    lastL = lastR = lastH = 0;
+  IMU.set_rotation(headingDeg);
 
-    odomTheta = imuHeading();
-    lastHeading = odomTheta;
+  LVerticalTracker.reset_position();
+  RVerticalTracker.reset_position();
+  HorizontalTracker.reset_position();
 
-    LVerticalTracker.reset_position();
-    RVerticalTracker.reset_position();
-    HorizontalTracker.reset_position();
+  lastVL = 0.0;
+  lastVR = 0.0;
+  lastH  = 0.0;
+  lastHeading = odomTheta;
+}
+
+void printOdom() {
+  pros::lcd::print(0, "X: %.2f", odomX);
+  pros::lcd::print(1, "Y: %.2f", odomY);
+  pros::lcd::print(2, "H: %.1f", odomTheta * RAD2DEG);
 }

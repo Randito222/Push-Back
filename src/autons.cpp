@@ -387,8 +387,7 @@ void Tuning_PID(){
   // IMU.reset();
   // resetOdom();
   //odom_task.resume();
-  DriveToPoint_PID(0, 20, 0, 100, 100);
-  //DriveToPoint_PID(10, 00, 0, 100, 200);
+  DriveToPoint_OdomPID(0,20,0, 100, 2000, 10);  //DriveToPoint_PID(10, 00, 0, 100, 200);
   //DriveToPoint_PID(20, 10, 90, 100, 100);
   // PID_Movement(80, 100);
   // PID_Turn(90, 90);
@@ -434,8 +433,7 @@ void Tuning_PID(){
 
 void AutonTesting(){
 
-  chassis.pid_drive_set(144, DRIVE_SPEED, true);
-  chassis.pid_wait();
+  DriveToPoint_OdomPID(0,20,0, 100, 2000, 10);  //DriveToPoint_PID(10, 00, 0, 100, 200);
   // // === MOVE 1: Forward 36 inches ===
   // pros::Task move1([]() {
   //   x_drive_pid_task(36.0, 0.0, 0.0); // Move to (36, 0) facing 0 degrees

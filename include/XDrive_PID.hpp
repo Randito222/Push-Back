@@ -46,9 +46,24 @@ public:
 
 static double clamp(double v, double lo, double hi);
 static double slewRate(double target, double current, double maxDelta);
- void StopBase();
-void DriveToPoint_PID(double targetX,double targetY,double targetHeadingDeg,double maxSpeed,double slew);
+void StopBase();
+#pragma once
 
-// void PID_Movement(double inches, double maxPower);
-// void PID_Strafe(double inches, double maxPower);
-// void PID_Turn(double targetDeg, double maxPower);
+void DriveToPoint_PID(
+    double targetX,
+    double targetY,
+    double targetHeadingDeg,
+    int    maxVolt,
+    int    timeout_ms,
+    double slewRateV
+);
+
+void DriveToPoint_OdomPID(
+    double targetX,
+    double targetY,
+    double targetHeadingDeg,
+    int    maxVolt,
+    int    timeout_ms,
+    double slewRateV
+);
+

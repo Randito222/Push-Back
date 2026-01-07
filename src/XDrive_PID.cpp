@@ -1,189 +1,135 @@
-#include "main.h"
+#include "XDrive_PID.hpp"
+#include "OdomSet.hpp"
 #include "subsystems.hpp"
-
 #include <cmath>
-
-// Globals from OdomSet.cpp
-extern double odomX, odomY, odomTheta;
 
 // Motor aliases
 #define FL1 Front_Left_1
 #define FL2 Front_Left_2
-#define BL1 Back_Left_1
-#define BL2 Back_Left_2
 #define FR1 Front_Right_1
 #define FR2 Front_Right_2
+#define BL1 Back_Left_1
+#define BL2 Back_Left_2
 #define BR1 Back_Right_1
 #define BR2 Back_Right_2
 
-// ------------------------
-// Utility helpers
-// ------------------------
-// Convert degrees <-> radians
-constexpr double DEG2RAD = M_PI / 180.0;
-constexpr double RAD2DEG = 180.0 / M_PI;
-
-double clamp(double v, double lo, double hi) {
-    return (v < lo ? lo : (v > hi ? hi : v));
+static double clamp(double v, double lo, double hi) {
+    return (v < lo) ? lo : (v > hi) ? hi : v;
 }
 
-double slewRate(double target, double current, double rate) {
+static double Myslew(double target, double current, double step) {
     double diff = target - current;
-    if (std::fabs(diff) > rate)
-        return current + rate * (diff > 0 ? 1 : -1);
-    return target;
+    if (std::fabs(diff) <= step) return target;
+    return current + (diff > 0 ? step : -step);
 }
 
-void StopBase(){
+static double wrapDeg(double deg) {
+    while (deg > 180) deg -= 360;
+    while (deg < -180) deg += 360;
+    return deg;
+}
+
+static void stopDrive() {
     FL1.move(0); FL2.move(0);
     FR1.move(0); FR2.move(0);
     BL1.move(0); BL2.move(0);
     BR1.move(0); BR2.move(0);
 }
 
-//===================================================
-// PERFECT X-DRIVE PID WITH ODOMETRY
-//===================================================
-void DriveToPoint_PID(double targetX,
-                      double targetY,
-                      double targetHeadingDeg,
-                      double maxSpeed,
-                      double slew)
-{
-    // Translation PID
-    const double kP = 4.2;
-    const double kI = 0.002;
-    const double kD = 0.3;
+void DriveToPoint_OdomPID(
+    double targetX,
+    double targetY,
+    double targetHeadingDeg,
+    int    maxVolt,
+    int    timeout_ms,
+    double slewRateV
+) {
+    // =============================
+    // PID controllers (starter values)
+    // =============================
+    RPID xPID(0.4, 0.0, 0.3);
+    RPID yPID(0.4, 0.0, 0.3);
+    RPID tPID(0.2,  0.0, 0.9);   // turn during translation (safer)
+    tPID.integralLimit = 300;   // usually keep turn I small (even if I=0)
 
-    // Rotation PID
-    const double kP_rot = 2.0;
-    const double kI_rot = 0.0;
-    const double kD_rot = 0.4;
-
-    double targetHeading = targetHeadingDeg * DEG2RAD;
-
-    // PID state
-    double fwdErr, strafeErr, rotErr;
-    double prevFwd = 0, prevStrafe = 0, prevRot = 0;
-    double fwdInt = 0, strafeInt = 0, rotInt = 0;
-
-    // Motor powers
     double fl = 0, fr = 0, bl = 0, br = 0;
+    int settled = 0;
+    int start = pros::millis();
 
-    int settleTimer = 0;
+    while (pros::millis() - start < timeout_ms) {
 
-    while (true) {
+        // =============================
+        // FIELD-CENTRIC ERROR
+        // =============================
+        double xErr = targetX - odomX;
+        double yErr = targetY - odomY;
 
-        updateOdom();
+        double headingDeg = odomTheta * 180.0 / M_PI;
+        double tErr = wrapDeg(targetHeadingDeg - headingDeg);
 
-        //--------------------------
-        // Compute XY ERROR
-        //--------------------------
-        double dx = targetX - odomX;
-        double dy = targetY - odomY;
+        // deadband prevents spiral “micro-corrections”
+        if (std::fabs(tErr) < 1.0) tErr = 0;
 
-        double dist = sqrt(dx*dx + dy*dy);
-
-        //--------------------------
-        // Compute rotation error
-        //--------------------------
-        rotErr = targetHeading - odomTheta;
-        while (rotErr >  M_PI) rotErr -= 2*M_PI;
-        while (rotErr < -M_PI) rotErr += 2*M_PI;
-
-        //--------------------------
-        // Robot-frame conversion
-        //--------------------------
-        double cosT = cos(-odomTheta);
-        double sinT = sin(-odomTheta);
-
-        fwdErr    = dy * cosT - dx * sinT;
-        strafeErr = dy * sinT + dx * cosT;
-
-        //--------------------------
-        // Check settling
-        //--------------------------
-        if (fabs(fwdErr) < 0.5 &&
-            fabs(strafeErr) < 0.5 &&
-            fabs(rotErr * RAD2DEG) < 1.0)
+        // =============================
+        // SETTLE CHECK
+        // =============================
+        if (std::fabs(xErr) < 0.5 &&
+            std::fabs(yErr) < 0.5 &&
+            std::fabs(tErr) < 1.0)
         {
-            settleTimer += 15;
-            if (settleTimer > 200) break;
+            settled += 10;
+            if (settled > 200) break;
+        } else {
+            settled = 0;
         }
-        else settleTimer = 0;
 
-        //--------------------------
-        // PID calculations
-        //--------------------------
-        fwdInt += fwdErr;
-        strafeInt += strafeErr;
-        rotInt += rotErr;
+        // =============================
+        // FIELD -> ROBOT TRANSFORM
+        // =============================
+        double sinH = std::sin(odomTheta);
+        double cosH = std::cos(odomTheta);
 
-        double fwdDer = fwdErr - prevFwd;     prevFwd = fwdErr;
-        double strafeDer = strafeErr - prevStrafe; prevStrafe = strafeErr;
-        double rotDer = rotErr - prevRot;     prevRot = rotErr;
+        double robotX =  xErr * cosH + yErr * sinH;   // strafe
+        double robotY = -xErr * sinH + yErr * cosH;   // forward
 
-        double fwdPower =
-            kP*fwdErr + kI*fwdInt + kD*fwdDer;
+        // =============================
+        // PID OUTPUTS (robot frame)
+        // =============================
+        double xOut = clamp(xPID.calculate(robotX), -maxVolt, maxVolt);
+        double yOut = clamp(yPID.calculate(robotY), -maxVolt, maxVolt);
 
-        double strafePower =
-            kP*strafeErr + kI*strafeInt + kD*strafeDer;
+        // Scale turn down while translating (prevents looping)
+        double driveMag = std::hypot(robotX, robotY);
+        double turnScale = clamp(1.0 - driveMag / 24.0, 0.3, 1.0);
 
-        double rotPower =
-            kP_rot*rotErr + kI_rot*rotInt + kD_rot*rotDer;
+        double tOut = clamp(tPID.calculate(tErr) * turnScale, -maxVolt, maxVolt);
 
-        fwdPower    = clamp(fwdPower,    -maxSpeed, maxSpeed);
-        strafePower = clamp(strafePower, -maxSpeed, maxSpeed);
-        rotPower    = clamp(rotPower,    -maxSpeed, maxSpeed);
+        // =============================
+        // X-DRIVE MIXING
+        // =============================
+        double tFL = yOut + xOut + tOut;
+        double tFR = yOut - xOut - tOut;
+        double tBL = yOut - xOut + tOut;
+        double tBR = yOut + xOut - tOut;
 
-        //--------------------------
-        // X-Drive Mixing
-        //--------------------------
-        double s = -strafePower;   // FIX STRAFE DIRECTION
+        // =============================
+        // SLEW
+        // =============================
+        fl = Myslew(tFL, fl, slewRateV);
+        fr = Myslew(tFR, fr, slewRateV);
+        bl = Myslew(tBL, bl, slewRateV);
+        br = Myslew(tBR, br, slewRateV);
 
-        double tFL = fwdPower + s + rotPower;
-        double tFR = fwdPower - s - rotPower;
-        double tBL = fwdPower - s + rotPower;
-        double tBR = fwdPower + s - rotPower;
+        // =============================
+        // APPLY
+        // =============================
+        FL1.move(fl); FL2.move(fl);
+        FR1.move(fr); FR2.move(fr);
+        BL1.move(bl); BL2.move(bl);
+        BR1.move(br); BR2.move(br);
 
-        //--------------------------
-        // Slew-rate limit
-        //--------------------------
-        fl = slewRate(tFL, fl, slew);
-        fr = slewRate(tFR, fr, slew);
-        bl = slewRate(tBL, bl, slew);
-        br = slewRate(tBR, br, slew);
-
-        //--------------------------
-        // Send to motors
-        //--------------------------
-        FL1.move(fl);  FL2.move(fl);
-        FR1.move(fr);  FR2.move(fr);
-        BL1.move(bl);  BL2.move(bl);
-        BR1.move(br);  BR2.move(br);
-
-        pros::lcd::print(0, "Odom X:%.2f  Y:%.2f", odomX, odomY);
-        pros::lcd::print(1, "dx:%.2f  dy:%.2f", dx, dy);
-        pros::lcd::print(2, "fwdErr:%.2f  strErr:%.2f", fwdErr, strafeErr);
-        pros::lcd::print(3, "rotErr:%.2f deg", rotErr * RAD2DEG);
-
-        pros::lcd::print(4, "fwdPow:%.2f strPow:%.2f rotPow:%.2f",
-            fwdPower, strafePower, rotPower);
-
-        pros::lcd::print(5, "FL:%.1f FR:%.1f", fl, fr);
-        pros::lcd::print(6, "BL:%.1f BR:%.1f", bl, br);
-
-        master.print(0, 0, "X%.1f Y%.1f", odomX, odomY);
-        master.print(1, 0, "F%.1f S%.1f", fwdErr, strafeErr);
-        master.print(2, 0, "Rot%.1f", rotErr * RAD2DEG);
-
-
-        pros::delay(15);
+        pros::delay(10);
     }
 
-    // Stop robot at the end
-    FL1.move(0); FL2.move(0);
-    FR1.move(0); FR2.move(0);
-    BL1.move(0); BL2.move(0);
-    BR1.move(0); BR2.move(0);
+    stopDrive();
 }
