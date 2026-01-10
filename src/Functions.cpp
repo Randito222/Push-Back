@@ -44,89 +44,9 @@ int slewDrive(int target, int current, int rate) {
 }
 
 void DriveControl() {
+  static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
+  const int slewRate = 10;
 
-  // =============================
-    // Persistent power values
-    // =============================
-    static int flPower = 0;
-    static int frPower = 0;
-    static int blPower = 0;
-    static int brPower = 0;
-
-    const int slewRate = 50;   // Lower = smoother, higher = more responsive
-
-    // =============================
-    // Controller input with deadzones
-    // =============================
-    double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-    double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-    double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-
-    if (fabs(forward) < 5) forward = 0;
-    if (fabs(strafe)  < 5) strafe  = 0;
-    if (fabs(rotate)  < 5) rotate  = 0;
-
-    // =============================
-    // FIELD CENTRIC TRANSFORMATION
-    // =============================
-    double headingRad = IMU.get_rotation() * M_PI / 180.0;
-
-    double tempForward =  forward * cos(headingRad) + strafe * sin(headingRad);
-    double tempStrafe  = -forward * sin(headingRad) + strafe * cos(headingRad);
-
-    forward = tempForward;
-    strafe  = tempStrafe;
-
-    // =============================
-    // X-DRIVE MOTOR MIXING
-    // =============================
-    int flTarget = forward + strafe + rotate;
-    int frTarget = forward - strafe - rotate;
-    int blTarget = forward - strafe + rotate;
-    int brTarget = forward + strafe - rotate;
-
-    // =============================
-    // INTERNAL SLEW RATE LIMITING
-    // =============================
-    auto applySlew = [&](int target, int &current) {
-        if (current < target)
-            current += slewRate;
-        else if (current > target)
-            current -= slewRate;
-
-        // If close, snap to target
-        if (abs(target - current) < slewRate)
-            current = target;
-    };
-
-    applySlew(flTarget, flPower);
-    applySlew(frTarget, frPower);
-    applySlew(blTarget, blPower);
-    applySlew(brTarget, brPower);
-
-    // =============================
-    // Send power to motors
-    // =============================
-    setDrivePower(flPower, frPower, blPower, brPower);
-
-    pros::delay(50); // Delay to avoid overloading the CPU
-}
-
-void DriveControlBackUp() {
-
-  // =============================
-  // Persistent power values
-  // =============================
-  static int flPower = 0;
-  static int frPower = 0;
-  static int blPower = 0;
-  static int brPower = 0;
-
-  const int slewRate = 50;   // Lower = smoother, higher = more responsive
-
-  // =============================
-  // Controller input with deadzones
-  // =============================
   double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
   double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
   double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
@@ -135,26 +55,35 @@ void DriveControlBackUp() {
   if (fabs(strafe)  < 5) strafe  = 0;
   if (fabs(rotate)  < 5) rotate  = 0;
 
-  // =============================
-  // X-DRIVE MOTOR MIXING
-  // =============================
-  int flTarget = forward + strafe + rotate;
-  int frTarget = forward - strafe - rotate;
-  int blTarget = forward - strafe + rotate;
-  int brTarget = forward + strafe - rotate;
+  double headingRad = IMU.get_rotation() * M_PI / 180.0;
 
-  // =============================
-  // INTERNAL SLEW RATE LIMITING
-  // =============================
+  // Field -> robot (rotate by -heading)
+  double f =  forward * cos(headingRad) + strafe * sin(headingRad);
+  double s = -forward * sin(headingRad) + strafe * cos(headingRad);
+  double r = rotate;
+
+  // Mix
+  double fl = f + s + r;
+  double fr = f - s - r;
+  double bl = f - s + r;
+  double br = f + s - r;
+
+  // Normalize
+  double maxMag = std::max({fabs(fl), fabs(fr), fabs(bl), fabs(br)});
+  if (maxMag > 127.0) {
+    double scale = 127.0 / maxMag;
+    fl *= scale; fr *= scale; bl *= scale; br *= scale;
+  }
+
+  int flTarget = (int)fl;
+  int frTarget = (int)fr;
+  int blTarget = (int)bl;
+  int brTarget = (int)br;
+
   auto applySlew = [&](int target, int &current) {
-      if (current < target)
-          current += slewRate;
-      else if (current > target)
-          current -= slewRate;
-
-      // If close, snap to target
-      if (abs(target - current) < slewRate)
-            current = target;
+    int diff = target - current;
+    if (abs(diff) <= slewRate) current = target;
+    else current += (diff > 0 ? slewRate : -slewRate);
   };
 
   applySlew(flTarget, flPower);
@@ -162,14 +91,52 @@ void DriveControlBackUp() {
   applySlew(blTarget, blPower);
   applySlew(brTarget, brPower);
 
-  // =============================
-  // Send power to motors
-  // =============================
   setDrivePower(flPower, frPower, blPower, brPower);
-
-  // Delay to avoid overloading the CPU
-  pros::delay(20);
 }
+
+void DriveControlBackUp() {
+  static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
+  const int slewRate = 10;
+
+  double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+  double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+  double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+
+  if (fabs(forward) < 5) forward = 0;
+  if (fabs(strafe)  < 5) strafe  = 0;
+  if (fabs(rotate)  < 5) rotate  = 0;
+
+  double fl = forward + strafe + rotate;
+  double fr = forward - strafe - rotate;
+  double bl = forward - strafe + rotate;
+  double br = forward + strafe - rotate;
+
+  // Normalize
+  double maxMag = std::max({fabs(fl), fabs(fr), fabs(bl), fabs(br)});
+  if (maxMag > 127.0) {
+    double scale = 127.0 / maxMag;
+    fl *= scale; fr *= scale; bl *= scale; br *= scale;
+  }
+
+  int flTarget = (int)fl;
+  int frTarget = (int)fr;
+  int blTarget = (int)bl;
+  int brTarget = (int)br;
+
+  auto applySlew = [&](int target, int &current) {
+    int diff = target - current;
+    if (abs(diff) <= slewRate) current = target;
+    else current += (diff > 0 ? slewRate : -slewRate);
+  };
+
+  applySlew(flTarget, flPower);
+  applySlew(frTarget, frPower);
+  applySlew(blTarget, blPower);
+  applySlew(brTarget, brPower);
+
+  setDrivePower(flPower, frPower, blPower, brPower);
+}
+
 
 
 // void IntakeReverse(){

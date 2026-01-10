@@ -1,69 +1,33 @@
 #pragma once
-class RPID {
-public:
-    double kP, kI, kD;
-    double integral = 0;
-    double prevError = 0;
-    double output = 0;
+#include <cmath>
 
-    // Optional: integral cap to prevent wind-up
-    double integralLimit = 1000;
+// =============================
+// Utility Helpers
+// =============================
+double clamp(double v, double lo, double hi);
+double Myslew(double target, double current, double maxDelta);
+void stopDrive();
 
-    RPID(double p, double i, double d) : kP(p), kI(i), kD(d) {}
-
-    double calculate(double error) {
-        // Prevent integral wind-up
-        integral += error;
-        if (integral > integralLimit) integral = integralLimit;
-        if (integral < -integralLimit) integral = -integralLimit;
-
-        double derivative = error - prevError;
-        prevError = error;
-
-        output = (kP * error) + (kI * integral) + (kD * derivative);
-        return output;
-    }
-
-    double calculateWithTarget(double target, double current) {
-        double error = target - current;
-        return calculate(error);
-    }
-
-    void reset() {
-        integral = 0;
-        prevError = 0;
-    }
-
-    void setGains(double p, double i, double d) {
-        kP = p;
-        kI = i;
-        kD = d;
-    }
-};
-
-
-
-
-static double clamp(double v, double lo, double hi);
-static double slewRate(double target, double current, double maxDelta);
-void StopBase();
-#pragma once
-
+// =============================
+// X-Drive PID
+// =============================
 void DriveToPoint_PID(
-    double targetX,
-    double targetY,
-    double targetHeadingDeg,
-    int    maxVolt,
-    int    timeout_ms,
-    double slewRateV
+    double targetX_in,
+    double targetY_in,
+    double targetHeading_deg,
+    int    maxVolt      = 12000,
+    int    timeout_ms   = 3000,
+    double slewRateV    = 300
 );
 
+// =============================
+// X-Drive Odometry PID
+// =============================
 void DriveToPoint_OdomPID(
-    double targetX,
-    double targetY,
-    double targetHeadingDeg,
-    int    maxVolt,
-    int    timeout_ms,
-    double slewRateV
+    double targetX_in,
+    double targetY_in,
+    double targetHeading_deg,
+    int    maxVolt      = 12000,
+    int    timeout_ms   = 3000,
+    double slewRateV    = 300
 );
-

@@ -1,5 +1,8 @@
+#include "EZ-Template/util.hpp"
 #include "main.h"
+#include "pros/misc.hpp"
 #include "subsystems.hpp"
+// #include "pros/competition.hpp"
 
 double Get_Color1() {
   return OP1.get_hue();
@@ -73,18 +76,24 @@ void Drive_Controls_swap() {
     // Check if the X button is currently pressed
     bool currentButtonState = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
 
+
     // Only act when the button changes from not pressed to pressed (rising edge)
     if (currentButtonState && !lastButtonState) {
       fieldCentric = !fieldCentric;  // Toggle between field-centric and robot-centric
+      //master.rumble(fieldCentric ? "." : "..");
     }
     if (fieldCentric) {
       // Field-centric drive code
       // (This would involve transforming joystick inputs based on robot heading)
       DriveControl();
+      master.clear_line(10);
+      master.print(10, 0, "Field-Centric");
     } else {
       // Robot-centric drive code
       // (This would use joystick inputs directly)
       DriveControlBackUp();
+      master.clear_line(10);
+      master.print(10, 0, "Robot-Centric");
     }
 
     // Update the last button state
@@ -92,11 +101,4 @@ void Drive_Controls_swap() {
 
     pros::delay(20); // Small delay to prevent CPU overload
   }
-}
-
-void odomTask() {
-    while (true) {
-        updateOdom();
-        pros::delay(20);
-    }
 }

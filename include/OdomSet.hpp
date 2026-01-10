@@ -1,5 +1,5 @@
 #pragma once
-
+#include "pros/rtos.hpp"
 
 // Global odom pose (field coordinates)
 extern double odomX;      // inches (right +)
@@ -8,5 +8,8 @@ extern double odomTheta;  // radians (CCW +)
 
 // Odom functions
 void updateOdom();
-void resetOdom(double x = 0.0, double y = 0.0, double headingDeg = 0.0);
+void resetOdom();
 void printOdom();
+
+// Task entry (PROS Task expects void(*)(void*))
+void odomTask(void* ignore);
