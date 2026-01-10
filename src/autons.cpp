@@ -1,13 +1,8 @@
 #include "autons.hpp"
-<<<<<<< HEAD
-#include "main.h"
-#include "pros/rtos.hpp"
-=======
 #include "EZ-Template/drive/drive.hpp"
 #include "XDrive_PID.hpp"
 #include "main.h"
 #include "pros/motors.h"
->>>>>>> efbe36ac6029254c5a2b1ca6cc916a88742749f7
 #include "subsystems.hpp"
 
 /////
@@ -92,43 +87,57 @@ void AutonTesting(){
 }
 
 void soloAWP(){
-  DescoreLeft.set_value(1);
-
-  chassis.pid_drive_set(15.7, DRIVE_SPEED, true); // Goes towards the preload area
+  chassis.pid_drive_set(36, DRIVE_SPEED, true); // Goes towards the preload area
   chassis.pid_wait();
 
-  chassis.pid_turn_set(-41, TURN_SPEED); // Turns to face preload
+  chassis.pid_turn_set(90, TURN_SPEED); // Turns to face preload
+  chassis.pid_wait();
+  
+  IntakeSpin(); // Spins intake to grab preload
+
+  chassis.pid_drive_set(6, DRIVE_SPEED); // Moves forward to grab preload
   chassis.pid_wait();
 
-  FrontIntake.move(-57);
+  pros::delay(500); // Waits to make sure preload is in intake
+  IntakeSpin(); // Stops intake
+
+  chassis.pid_drive_set(-42, DRIVE_SPEED, true); // Backs away from preload area into the side tube
   chassis.pid_wait();
 
-  MiddleIntake.move(-57);
+  IntakeSpin(); // Spins intake to outtake preload into the side tube
+  pros::delay(500); // Waits to make sure preload is out
+
+  chassis.pid_drive_set(6, DRIVE_SPEED); // Moves forward to clear the side tube
+  chassis.pid_wait_quick_chain(); // Quick chain to next movement for faster movement
+ 
+  chassis.pid_turn_set(200, TURN_SPEED); // Turns to face middle balls and middle tube
   chassis.pid_wait();
 
-  chassis.pid_drive_set(11, DRIVE_SPEED, true); // Goes towards the preload area
+  chassis.pid_drive_set(35, DRIVE_SPEED, true); // Drives to middle balls and middle tube 
+  chassis.pid_wait_until(25); // Waits until 25 inches away to start intaking
+  chassis.pid_speed_max_set(50); // Slows down max speed to 50 for better control
   chassis.pid_wait();
 
-  FrontIntake.move(-127);
-  MiddleIntake.move(-127);
-  pros::delay(1000);
-
-  // chassis.pid_drive_set(6.7, DRIVE_SPEED, true); // Goes towards the preload area
-  // chassis.pid_wait();
-
-  MiddleIntake.move(-207);
+  chassis.pid_turn_set(30, TURN_SPEED); // Turns for back faces middle goal
   chassis.pid_wait();
 
-  FrontIntake.move(-407);
+  chassis.pid_drive_set(-8, DRIVE_SPEED, true); // Backs up to get touch middle goal
   chassis.pid_wait();
 
-  chassis.pid_turn_set(40, TURN_SPEED); // Turns to face preload
+  chassis.pid_turn_set(160, TURN_SPEED); // Turns to face the other middle balls
   chassis.pid_wait();
 
-  chassis.pid_drive_set(24, DRIVE_SPEED, true); // Goes towards the preload area
+  chassis.pid_drive_set(50, DRIVE_SPEED, true); // Drives to the other middle balls and goes to other side tube
   chassis.pid_wait();
 
-  IntakeSpin();
+  chassis.pid_turn_set(90, TURN_SPEED); // Turns for back to face the side tube
+  chassis.pid_wait();
+
+  chassis.pid_drive_set(-12, DRIVE_SPEED); // Backs up to get touch the side tube and score
+  chassis.pid_wait();
+
+  pros::delay(1000); // Waits to make sure preload is out
+  IntakeSpin(); // Stops intake
 }
 
 void RightSideAuton(){
