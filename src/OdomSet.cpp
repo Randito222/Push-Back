@@ -1,25 +1,16 @@
-// OdomSet.cpp  (COPY/PASTE)
-// 3-tracking-wheel odometry using:
-//  - Left vertical tracking wheel (forward/back)
-//  - Right vertical tracking wheel (forward/back)
-//  - Horizontal tracking wheel (strafe)
-//  - IMU for heading
-//
-// IMPORTANT: You MUST set TRACK_WIDTH_IN and H_OFFSET_IN for YOUR robot.
-
 #include "OdomSet.hpp"
 #include "subsystems.hpp"
 #include "pros/apix.h"
 #include <cmath>
 
 // =============================
-// Wheel geometry (your wheels)
+// Wheel geometry 
 // =============================
 constexpr double VERT_DIAM_IN = 2.75;
 constexpr double HORZ_DIAM_IN = 2.00;
 
 // =============================
-// ODOM OFFSETS (SET THESE!)
+// ODOM OFFSETS 
 // =============================
 // Distance between the LEFT and RIGHT vertical tracking wheels (center-to-center).
 // Measure in inches.

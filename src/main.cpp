@@ -80,7 +80,7 @@ void initialize() {
   // Initialize chassis and auton selector
   chassis.initialize();
   ez::as::initialize();
-  master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
+  master.rumble(chassis.drive_imu_calibrated() ? ".." : "---");
   
 }
 

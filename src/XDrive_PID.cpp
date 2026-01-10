@@ -193,7 +193,23 @@ void DriveToPoint_OdomPID(
     // =============================
     PIDTest xPID {9.0, 0.0, 40.0};
     PIDTest yPID {9.0, 0.0, 40.0};
-    PIDTest turnPID {3.0, 0.0, 24.0}; // IMU turn PID
+    PIDTest turnPID {3.0, 0.0, 24.0}; // heading PID (degrees)
+
+    // --- additions: reset PIDs for consistent repeated calls ---
+    xPID.reset();
+    yPID.reset();
+    turnPID.reset();
+
+    // --- additions: minimum output to overcome static friction ---
+    // (These are motor "move" units: -127..127)
+    const double MIN_XY   = 8.0;   // try 6-12
+    const double MIN_TURN = 6.0;   // try 4-10
+
+    auto applyMin = [&](double v, double minv) -> double {
+        if (std::fabs(v) < 1e-6) return 0.0;
+        if (std::fabs(v) < minv) return (v > 0) ? minv : -minv;
+        return v;
+    };
 
     double fl = 0, fr = 0, bl = 0, br = 0;
     int settled = 0;
@@ -214,6 +230,9 @@ void DriveToPoint_OdomPID(
         // wrap heading error to [-180, 180]
         while (tErr > 180) tErr -= 360;
         while (tErr < -180) tErr += 360;
+
+        // --- additions: deadband to stop tiny turn jitter ---
+        if (std::fabs(tErr) < 1.0) tErr = 0;
 
         // =============================
         // SETTLING CHECK
@@ -242,7 +261,18 @@ void DriveToPoint_OdomPID(
         // =============================
         double xOut = clamp(xPID.step(robotX), -maxSpeed, maxSpeed);
         double yOut = clamp(yPID.step(robotY), -maxSpeed, maxSpeed);
-        double tOut = clamp(turnPID.step(tErr),  -maxSpeed, maxSpeed);
+
+        // --- additions: scale turn while translating to prevent spiraling ---
+        // driveMag in inches; 24 is a reasonable “far” distance
+        double driveMag = std::hypot(robotX, robotY);
+        double turnScale = clamp(1.0 - (driveMag / 24.0), 0.3, 1.0);
+
+        double tOut = clamp(turnPID.step(tErr) * turnScale, -maxSpeed, maxSpeed);
+
+        // --- additions: apply minimums (only when nonzero) ---
+        xOut = applyMin(xOut, MIN_XY);
+        yOut = applyMin(yOut, MIN_XY);
+        tOut = applyMin(tOut, MIN_TURN);
 
         // =============================
         // X-DRIVE MIXING
@@ -253,10 +283,10 @@ void DriveToPoint_OdomPID(
         double tBR = yOut + xOut - tOut;
 
         double maxMag = std::max({
-            fabs(tFL),
-            fabs(tFR),
-            fabs(tBL),
-            fabs(tBR)
+            std::fabs(tFL),
+            std::fabs(tFR),
+            std::fabs(tBL),
+            std::fabs(tBR)
         });
 
         if (maxMag > maxSpeed) {
@@ -278,10 +308,10 @@ void DriveToPoint_OdomPID(
         // =============================
         // APPLY POWER
         // =============================
-        FL1.move(fl); FL2.move(fl);
-        FR1.move(fr); FR2.move(fr);
-        BL1.move(bl); BL2.move(bl);
-        BR1.move(br); BR2.move(br);
+        FL1.move((int)fl); FL2.move((int)fl);
+        FR1.move((int)fr); FR2.move((int)fr);
+        BL1.move((int)bl); BL2.move((int)bl);
+        BR1.move((int)br); BR2.move((int)br);
 
         pros::delay(10);
     }
