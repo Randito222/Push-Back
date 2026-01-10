@@ -1,11 +1,15 @@
 #pragma once
-#include <cmath>
+#include "pros/rtos.hpp"
 
-// ---- Odometry position variables ----
-extern double &xPos;   // inches
-extern double &yPos ;   // inches
-extern double &theta;  // radians
+// Global odom pose (field coordinates)
+extern double odomX;      // inches (right +)
+extern double odomY;      // inches (forward +)
+extern double odomTheta;  // radians (CCW +)
 
-void initOdom();
+// Odom functions
 void updateOdom();
-static double getHeadingRad();
+void resetOdom();
+void printOdom();
+
+// Task entry (PROS Task expects void(*)(void*))
+void odomTask(void* ignore);

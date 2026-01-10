@@ -1,5 +1,4 @@
 #include "pros/rtos.hpp"
-
 double Get_Color1(); // gets color value from optical sensor 1
 double Get_Color2(); // gets color value from optical sensor 2
 
@@ -13,3 +12,4 @@ inline int BackIntakeControl = 0;
 inline pros::Task Color_Mode_Task(Color_Mode);
 inline pros::Task Color_Sorter_Task(Color_Sorter);
 inline pros::Task Drive_Controls_task(Drive_Controls_swap);
+

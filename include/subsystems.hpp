@@ -21,8 +21,8 @@ inline pros::Motor Front_Left_1(-14); // Bottom Front Left motor
 inline pros::Motor Front_Left_2(13); // Top Front Left motor
 inline pros::Motor Back_Left_1(-12);  // Bottom Back Left motor
 inline pros::Motor Back_Left_2(11);  // Top Back Left motor 
-inline pros::Motor Front_Right_1(-17); // Bottom Front Right motor
-inline pros::Motor Front_Right_2(18); // Top Front Right motor
+inline pros::Motor Front_Right_1(18); // Bottom Front Right motor
+inline pros::Motor Front_Right_2(-17); // Top Front Right motor
 inline pros::Motor Back_Right_1(19);  // Bottom Back Right motor
 inline pros::Motor Back_Right_2(-20);  // Top Back Right motor
 
@@ -47,9 +47,9 @@ Sensors
 inline pros::Imu IMU(6); // IMU sensor on port 6
 inline pros::Imu IMU2(2); // IMU sensor on port 2
 inline pros::Optical OP1(7); // Optical sensor on port 7
-inline pros::Optical OP2(9); // Optical sensor on port 9
+inline pros::Optical OP2(8); // Optical sensor on port 9
 inline pros::Rotation LVerticalTracker(15); // Left Horizontal tracking wheel on port 15
-inline pros::Rotation RVerticalTracker(9); // Right Horizontal tracking wheel on port 8
+inline pros::Rotation RVerticalTracker(9); // Right Horizontal tracking wheel on port 9
 inline pros::Rotation HorizontalTracker(16); // Vertical tracking wheel on port 16
 
 // inline pros::Motor intake(1);
@@ -58,7 +58,7 @@ inline pros::Rotation HorizontalTracker(16); // Vertical tracking wheel on port 
 /**
 Pneumatics
 */
-inline pros::adi::DigitalOut TongueMech('H');
-inline pros::adi::DigitalOut DescoreLeft('F');
+inline pros::adi::DigitalOut TongueMech('B');
+inline pros::adi::DigitalOut DescoreLeft('C');
 //inline pros::adi::DigitalOut DescoreRight('C');
 inline pros::adi::DigitalOut IntakeLift('A');

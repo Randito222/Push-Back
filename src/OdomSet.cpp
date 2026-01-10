@@ -1,130 +1,155 @@
-#include "main.h"
+#include "OdomSet.hpp"
 #include "subsystems.hpp"
+#include "pros/apix.h"
 #include <cmath>
 
-// ===========================
-//  TRACKING WHEEL CONSTANTS
-//  (EDIT THESE FOR YOUR BOT)
-// ===========================
+// =============================
+// Wheel geometry 
+// =============================
+constexpr double VERT_DIAM_IN = 2.75;
+constexpr double HORZ_DIAM_IN = 2.00;
 
-// Left vertical tracking wheel (forward)
-constexpr double L_DIAM_IN   = 2.25;      // inches
-constexpr double L_TICKS_REV = 36000.0;   // sensor ticks per rev
+// =============================
+// ODOM OFFSETS 
+// =============================
+// Distance between the LEFT and RIGHT vertical tracking wheels (center-to-center).
+// Measure in inches.
+constexpr double TRACK_WIDTH_IN = 6.0;   // <-- CHANGE THIS
 
-// Right vertical tracking wheel (forward)
-constexpr double R_DIAM_IN   = 2.25;
-constexpr double R_TICKS_REV = 36000.0;
+// Horizontal wheel offset from robot center (inches):
+// + if the horizontal wheel is IN FRONT of the robot center
+// - if the horizontal wheel is BEHIND the robot center
+constexpr double H_OFFSET_IN = -3.0;       // <-- CHANGE THIS (0 only if it's exactly centered)
 
-// Horizontal tracking wheel (strafe)
-constexpr double H_DIAM_IN   = 1.25;     
-constexpr double H_TICKS_REV = 36000.0;
+// =============================
+constexpr double DEG2RAD = M_PI / 180.0;
+constexpr double RAD2DEG = 180.0 / M_PI;
 
-// Precomputed tick→inch scale factors
-constexpr double L_TICKS_TO_IN = (L_DIAM_IN * M_PI) / L_TICKS_REV;
-constexpr double R_TICKS_TO_IN = (R_DIAM_IN * M_PI) / R_TICKS_REV;
-constexpr double H_TICKS_TO_IN = (H_DIAM_IN * M_PI) / H_TICKS_REV;
+// =============================
+// Odom State (global)
+// =============================
+double odomX = 0.0;      // field X (right +)
+double odomY = 0.0;      // field Y (forward +)
+double odomTheta = 0.0;  // heading radians
 
-// Horizontal tracking wheel offset from robot center (inches).
-// + if the wheel is to the LEFT of the center, - if to the RIGHT.
-// Measure from robot centerline to the wheel axle.
-constexpr double H_SIDE_OFFSET_IN = 3.0;   // <<< MEASURE & TUNE THIS
+// =============================
+// Helpers
+// =============================
+static double wheelCirc(double diamIn) {
+  return M_PI * diamIn;
+}
 
-// ===========================
-//  GLOBAL ODOM STATE
-// ===========================
+// pros::Rotation get_position() returns centidegrees (cdeg)
+// 36000 cdeg per revolution
+static double rotCdegToInches(double cdeg, double diamIn) {
+  return (cdeg / 36000.0) * wheelCirc(diamIn);
+}
 
-// Field coordinates in inches, heading in radians
-double odomX      = 0.0;
-double odomY      = 0.0;
-double odomTheta  = 0.0;   // radians, CCW, 0 = field "forward"
+static double wrapRad(double a) {
+  while (a > M_PI) a -= 2.0 * M_PI;
+  while (a < -M_PI) a += 2.0 * M_PI;
+  return a;
+}
 
-double &xPos   = odomX;
-double &yPos   = odomY;
-double &theta  = odomTheta;
-
-// Previous wheel distances (inches)
-static double lastL = 0.0;
-static double lastR = 0.0;
-static double lastH = 0.0;
-
-// Previous heading (radians)
+// =============================
+// Last readings
+// =============================
+static double lastVL = 0.0;
+static double lastVR = 0.0;
+static double lastH  = 0.0;
 static double lastHeading = 0.0;
 
-// Helper: IMU heading in radians (wrap to [-pi, pi])
-static double getHeadingRad() {
-  double deg = IMU.get_rotation();          // [-180, 180] typically
-  // wrap just in case
-  while (deg > 180)  deg -= 360;
-  while (deg < -180) deg += 360;
-  return deg * M_PI / 180.0;
-}
-
-// ===========================
-//  ODOMETRY API
-// ===========================
-
-// Call once at start of auton (and whenever you want to reset pose)
-void resetOdom(double xInches, double yInches, double headingDeg) {
-    odomX = xInches;
-    odomY = yInches;
-    odomTheta = headingDeg * M_PI / 180.0;
-
-    lastHeading = odomTheta;
-
-    lastL = 0.0;
-    lastR = 0.0;
-    lastH = 0.0;
-
-    LVerticalTracker.reset_position();
-    RVerticalTracker.reset_position();
-    HorizontalTracker.reset_position();
-}
-
-// Overload for zero pose
-void resetOdom() {
-    resetOdom(0.0, 0.0, 0.0);
-}
-
-// Call this in a 10–20ms loop (opcontrol task or auton task)
+// =============================
+// Update
+// =============================
 void updateOdom() {
-    // 1) Read current ticks and convert to inches
-    double L_in = LVerticalTracker.get_position() * L_TICKS_TO_IN;
-    double R_in = RVerticalTracker.get_position() * R_TICKS_TO_IN;
-    double H_in = HorizontalTracker.get_position() * H_TICKS_TO_IN;
+  // Skip junk heading while IMU calibrating
+  if (IMU.is_calibrating()) return;
 
-    // 2) Compute deltas since last update
-    double dL = L_in - lastL;
-    double dR = R_in - lastR;
-    double dH = H_in - lastH;
+  // Read sensors (apply sign flips here ONCE)
+  // Forward should be + for BOTH vertical wheels.
+  const double vlNow = rotCdegToInches(-LVerticalTracker.get_position(), VERT_DIAM_IN);
+  const double vrNow = rotCdegToInches( RVerticalTracker.get_position(), VERT_DIAM_IN);
+  const double hNow  = rotCdegToInches( HorizontalTracker.get_position(), HORZ_DIAM_IN);
 
-    lastL = L_in;
-    lastR = R_in;
-    lastH = H_in;
+  const double heading = IMU.get_rotation() * DEG2RAD;
+  if (!std::isfinite(heading)) return;
 
-    // 3) Heading from IMU
-    double heading = getHeadingRad();
-    double dTheta  = heading - lastHeading;
-    odomTheta      = heading;
-    lastHeading    = heading;
+  // Deltas
+  const double dVL = vlNow - lastVL;
+  const double dVR = vrNow - lastVR;
+  const double dH  = hNow  - lastH;
 
-    // 4) Robot-frame translation
-    // Forward is average of L & R vertical wheels
-    double forward = (dL + dR) / 2.0;
+  const double dTheta = wrapRad(heading - lastHeading);
 
-    // Horizontal wheel measures strafe + rotation effect.
-    // Compensate for wheel offset:
-    double strafe = dH - dTheta * H_SIDE_OFFSET_IN;
+  // Save state
+  lastVL = vlNow;
+  lastVR = vrNow;
+  lastH  = hNow;
+  lastHeading = heading;
 
-    // 5) Rotate robot-frame delta into field frame
-    double cosT = std::cos(odomTheta);
-    double sinT = std::sin(odomTheta);
+  // =============================
+  // Robot-relative deltas
+  // =============================
+  // Forward/back is average of vertical wheels
+  const double dY_robot = (dVL + dVR) * 0.5;
 
-    // Coordinate convention:
-    //  - odomY: forward on field
-    //  - odomX: left on field
-    double dX =  forward * sinT + strafe * cosT;
-    double dY =  forward * cosT - strafe * sinT;
+  // Strafe is horizontal wheel minus the amount caused purely by turning
+  // Turning causes the horizontal wheel to roll: arc = dTheta * offset
+  const double dX_robot = dH - (dTheta * H_OFFSET_IN);
 
-    odomX += dX;
-    odomY += dY;
+  // OPTIONAL: if you want, you can compare IMU turn vs wheel turn:
+  // const double dTheta_wheels = (dVR - dVL) / TRACK_WIDTH_IN;
+
+  // =============================
+  // Robot -> Field transform (use mid-heading)
+  // =============================
+  const double midHeading = heading - (dTheta * 0.5);
+  const double sinH = std::sin(midHeading);
+  const double cosH = std::cos(midHeading);
+
+  odomX += dX_robot * cosH - dY_robot * sinH;
+  odomY += dX_robot * sinH + dY_robot * cosH;
+
+  odomTheta = heading;
+}
+
+// =============================
+// Reset
+// =============================
+void resetOdom() {
+  odomX = 0.0;
+  odomY = 0.0;
+  odomTheta = 0.0;
+
+  IMU.set_rotation(0);
+
+  // Clear rotation sensors
+  LVerticalTracker.reset_position();
+  RVerticalTracker.reset_position();
+  HorizontalTracker.reset_position();
+
+  lastVL = 0.0;
+  lastVR = 0.0;
+  lastH  = 0.0;
+  lastHeading = 0.0;
+}
+
+// =============================
+// Print
+// =============================
+void printOdom() {
+  pros::lcd::print(0, "X: %.2f", odomX);
+  pros::lcd::print(1, "Y: %.2f", odomY);
+  pros::lcd::print(2, "H: %.1f deg", odomTheta * RAD2DEG);
+}
+
+// =============================
+// Task
+// =============================
+void odomTask(void*) {
+  while (true) {
+    updateOdom();
+    pros::delay(10);
+  }
 }
