@@ -62,26 +62,28 @@ void default_constants() {
 void AutonTesting(){
 
   FrontIntake.move(127); // Spins intake to grab preload
-  DriveToPoint_OdomPID(12,8,-45, 100, 1500, 40); 
+  DriveToPoint_OdomPID(12,9,-45, 100, 1500, 40); 
 
-  DriveToPoint_OdomPID(27, 20, -45, 30, 2000, 40);
+  DriveToPoint_OdomPID(27, 20, -45, 30, 2000, 20);
   pros::delay(50);
 
-  DriveToPoint_OdomPID(27, 20, -130, 80, 2000, 40);
+  DriveToPoint_OdomPID(27, 20, -130, 60, 2000, 40);
 
   IntakeLift.set_value(1); // Lifts intake to score
-  pros::delay(50);
-  DriveToPoint_OdomPID(15, 28, -130, 80, 3000, 40);
-  Arm.move_absolute(-700,50);  // Stop the intake motor when B is pressed
+  DriveToPoint_OdomPID(14, 26, -130, 80, 3000, 30);
+  Arm.move_absolute(-900,45);  // Stop the intake motor when B is pressed
 
-  pros::delay(600); // Waits to make sure preload is out
+  pros::delay(900); // Waits to make sure preload is out
+  IntakeLift.set_value(0); // Lifts intake to score
   Arm.move_absolute(0,200);  // Stop the intake motor when B is pressed
-  DriveToPoint_OdomPID(51, 0, -130, 80, 2000, 30);
+  DriveToPoint_OdomPID(50, 0, -130, 80, 2000, 30);
 
   TongueMech.set_value(1);
-  DriveToPoint_OdomPID(51, 0, -170, 80, 2000, 30);
+  DriveToPoint_OdomPID(50, 0, -180, 80, 2000, 30);
 
-  DriveToPoint_OdomPID(50, -15, -170, 80, 2000, 30);
+  DriveToPoint_OdomPID(45, -20, -180, 80, 2000, 30);
+
+  DriveToPoint_OdomPID(45, 10,  -180, 80, 2000, 30);
   
   
 }
