@@ -2,6 +2,7 @@
 #include "EZ-Template/drive/drive.hpp"
 #include "XDrive_PID.hpp"
 #include "main.h"
+#include "pros/device.hpp"
 #include "pros/motors.h"
 #include "subsystems.hpp"
 
@@ -60,6 +61,8 @@ void default_constants() {
 
 
 void AutonTesting(){
+    FrontIntake.move(127); // Spins intake to grab preload
+    DriveToPoint_OdomPID(12,8,-45, 100, 1500, 40); 
 
   FrontIntake.move(127); // Spins intake to grab preload
   DriveToPoint_OdomPID(12,9,-45, 100, 1500, 40); 
@@ -309,16 +312,17 @@ void BruinLeftAuto(){
 }
 
 void Skills(){
-  // Add auton code here
-
-  // FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
-  // chassis.pid_drive_set(30, DRIVE_SPEED ); // Goes towards the preload area
-  // chassis.pid_wait();
-
-  // chassis.pid_drive_set(-18, DRIVE_SPEED ); // Goes towards the preload area
-  // chassis.pid_wait();
-
-  // PID_Strafe(-80, 100);
+  FrontIntake.move(127); // Spins intake to grab preload
+  DriveToPoint_OdomPID(3,21,0, 40, 2000, 40);
+  DriveToPoint_OdomPID(0,3,0, 100, 1500, 40);
+  DriveToPoint_OdomPID(44, 0, 0, 100, 2000, 40);
+  DriveToPoint_OdomPID(0, 0, 180, 100, 3000, 40);
+  DriveToPoint_OdomPID(0, 17, 180, 100, 1500, 40);
   // pros::delay(500);
-  // PID_Strafe(40,  100);
+  // DriveToPoint_OdomPID(-1, -20, 0, 100, 1500, 40);
+  // pros::delay(500);
+  // FrontIntake.move(127);
+  // pros::delay(3500);
+  // DriveToPoint_OdomPID(-1, 22, 180, 100, 1500, 40);
+  // pros::delay(500);
 }

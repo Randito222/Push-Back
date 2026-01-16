@@ -4,8 +4,10 @@
 #include "EZ-Template/util.hpp"
 #include "OdomSet.hpp"
 #include "XDrive_PID.hpp"
+#include "autons.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
+
 
 
 /////
@@ -70,10 +72,10 @@ void initialize() {
   // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);  // If using tank, only the left side is used.
   // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
 
-  // Autonomous Selector using LLEMU
-  ez::as::auton_selector.autons_add({
-      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
-   });
+// Autonomous Selector using LLEMU
+ez::as::auton_selector.autons_add({
+  {"Auton Testing\n\nThis is for testing auton code.", Skills}
+});
 
 
 
