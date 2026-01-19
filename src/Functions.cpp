@@ -45,7 +45,7 @@ int slewDrive(int target, int current, int rate) {
 
 void DriveControl() {
   static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
-  const int slewRate = 10;
+  const int slewRate = 50;
 
   double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
   double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
@@ -224,14 +224,14 @@ void MatchLoading(){
 void ArmAction(){
   if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,150);  // Stop the intake motor when B is pressed
+    Arm.move_absolute(-570,50);  // Stop the intake motor when B is pressed
     KnownState=1;
     pros::delay(200);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
   }
   else if (master.get_digital(DIGITAL_L1) == true && (IntakeLiftT == -1 || IntakeLiftT == 0)){
     FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,150);  // Stop the intake motor when B is released
+    Arm.move_absolute(-570,50);  // Stop the intake motor when B is released
     pros::delay(500);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
     Arm.move_absolute(5,200);  // Stop the intake motor when B is released

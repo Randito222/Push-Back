@@ -63,7 +63,6 @@ static double lastHeading = 0.0;
 // Update
 // =============================
 void updateOdom() {
-  // Skip junk heading while IMU calibrating
   if (IMU.is_calibrating()) return;
 
   // Read sensors (apply sign flips here ONCE)
@@ -98,7 +97,7 @@ void updateOdom() {
   // Turning causes the horizontal wheel to roll: arc = dTheta * offset
   const double dX_robot = dH - (dTheta * H_OFFSET_IN);
 
-  // OPTIONAL: if you want, you can compare IMU turn vs wheel turn:
+  // Compare IMU turn vs wheel turn:
   // const double dTheta_wheels = (dVR - dVL) / TRACK_WIDTH_IN;
 
   // =============================

@@ -18,7 +18,7 @@
 
 
 // =============================
-// Constants (TUNE)
+// Constants
 // =============================
 constexpr double WHEEL_DIAM_IN = 3.25;
 constexpr double GEAR_RATIO   = 1.0;
@@ -189,21 +189,21 @@ void DriveToPoint_OdomPID(
     double slewRateV
 ) {
     // =============================
-    // PID tuning (starter values)
+    // PID tuning 
     // =============================
     PIDTest xPID {9.0, 0.0, 40.0};
     PIDTest yPID {9.0, 0.0, 40.0};
     PIDTest turnPID {3.0, 0.0, 24.0}; // heading PID (degrees)
 
-    // --- additions: reset PIDs for consistent repeated calls ---
+    // reset PIDs for consistent repeated calls
     xPID.reset();
     yPID.reset();
     turnPID.reset();
 
-    // --- additions: minimum output to overcome static friction ---
+    // minimum output to overcome static friction
     // (These are motor "move" units: -127..127)
-    const double MIN_XY   = 8.0;   // try 6-12
-    const double MIN_TURN = 6.0;   // try 4-10
+    const double MIN_XY   = 8.0;   
+    const double MIN_TURN = 6.0;  
 
     auto applyMin = [&](double v, double minv) -> double {
         if (std::fabs(v) < 1e-6) return 0.0;
@@ -231,7 +231,7 @@ void DriveToPoint_OdomPID(
         while (tErr > 180) tErr -= 360;
         while (tErr < -180) tErr += 360;
 
-        // --- additions: deadband to stop tiny turn jitter ---
+        // deadband to stop tiny turn jitter
         if (std::fabs(tErr) < 1.0) tErr = 0;
 
         // =============================
@@ -262,14 +262,13 @@ void DriveToPoint_OdomPID(
         double xOut = clamp(xPID.step(robotX), -maxSpeed, maxSpeed);
         double yOut = clamp(yPID.step(robotY), -maxSpeed, maxSpeed);
 
-        // --- additions: scale turn while translating to prevent spiraling ---
-        // driveMag in inches; 24 is a reasonable “far” distance
+        // scale turn while translating to prevent spiraling 
         double driveMag = std::hypot(robotX, robotY);
         double turnScale = clamp(1.0 - (driveMag / 24.0), 0.3, 1.0);
 
         double tOut = clamp(turnPID.step(tErr) * turnScale, -maxSpeed, maxSpeed);
 
-        // --- additions: apply minimums (only when nonzero) ---
+        // apply minimums (only when nonzero) 
         xOut = applyMin(xOut, MIN_XY);
         yOut = applyMin(yOut, MIN_XY);
         tOut = applyMin(tOut, MIN_TURN);

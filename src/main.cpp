@@ -74,7 +74,9 @@ void initialize() {
 
 // Autonomous Selector using LLEMU
 ez::as::auton_selector.autons_add({
-  {"Auton Testing\n\nThis is for testing auton code.", Skills}
+  {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+  {"Skills\n\n This is skills", Skills},
+ 
 });
 
 
@@ -253,32 +255,6 @@ void opcontrol() {
 
   while (true) {
 
-    // // ===========================
-    //     // ODOM DEBUG PRINTING
-    //     // ===========================
-    //     pros::lcd::print(0, "X: %.2f   Y: %.2f", odomX, odomY);
-    //     pros::lcd::print(1, "Theta: %.2f deg", odomTheta * 180.0 / M_PI);
-
-    //     pros::lcd::print(2, "L: %.3f  R: %.3f  H: %.3f",
-    //         -LVerticalTracker.get_position() * VERT_TPI,
-    //         RVerticalTracker.get_position() * VERT_TPI,
-    //         HorizontalTracker.get_position() * HORIZ_TPI
-    //     );
-
-    //     pros::lcd::print(3, "IMU: %.2f deg", IMU.get_rotation());
-
-    //     // // Additional robot-frame debug data
-    //     // pros::lcd::print(4, "ForwardErr: %.2f", debug_forward);
-    //     // pros::lcd::print(5, "StrafeErr: %.2f", debug_strafe);
-
-    //     // Controller debug
-    //     master.print(0, 0, "X:%.1f Y:%.1f", odomX, odomY);
-    //     master.print(1, 0, "Th:%.1f", odomTheta * 180 / M_PI);
-    //     master.print(2, 0, "L:%.1f R:%.1f", 
-    //         LVerticalTracker.get_position() * VERT_TPI,
-    //         RVerticalTracker.get_position() * VERT_TPI
-    //     );
-
     printOdom();
     ArmAction();
     IntakeLiftToggle();
@@ -291,10 +267,6 @@ void opcontrol() {
     //DriveControl();  // Run the drive control function
     
     
-    // . . .
-    // Put more user control code here!
-    // . . .
-
     
 
     if(master.get_digital(DIGITAL_R2)) {
@@ -303,17 +275,6 @@ void opcontrol() {
     else if(master.get_digital(DIGITAL_R1)) {
       FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
     } 
-    // else if(master.get_digital(DIGITAL_B) == true) {
-    //   Arm.move_absolute(-530,600);  // Stop the intake motor when B is pressed
-    //   KnownState=1;
-    //   pros::delay(200);
-    // }
-    // else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
-    //   Arm.move_absolute(0,200);  // Stop the intake motor when B is released
-    //   KnownState=0;
-    //   pros::delay(200);
-
-    // }
     else{
       FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
     }
