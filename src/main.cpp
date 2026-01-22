@@ -4,8 +4,11 @@
 #include "EZ-Template/util.hpp"
 #include "OdomSet.hpp"
 #include "XDrive_PID.hpp"
+#include "autons.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
+
+
 
 /////
 // For installation, upgrading, documentations, and tutorials, check out our website!
@@ -41,13 +44,18 @@ ez::Drive chassis(
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
+<<<<<<< HEAD
  
+=======
+  
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
   // Look at your horizontal tracking wheel and decide if it's in front of the midline of your robot or behind it
   //  - change `back` to `front` if the tracking wheel is in front of the midline
   //  - ignore this if you aren't using a horizontal tracker
+<<<<<<< HEAD
   // chassis.odom_tracker_back_set(&horiz_tracker);
   // Look at your vertical tracking wheel and decide if it's to the left or right of the center of the robot
   //  - change `left` to `right` if the tracking wheel is to the right of the centerline
@@ -57,11 +65,21 @@ void initialize() {
   resetOdom();
 
   static pros::Task odom_task(odomTask);
+=======
+  //chassis.odom_tracker_back_set(&horiz_tracker);
+  // Look at your vertical tracking wheel and decide if it's to the left or right of the center of the robot
+  //  - change `left` to `right` if the tracking wheel is to the right of the centerline
+  //  - ignore this if you aren't using a vertical tracker
+  //chassis.odom_tracker_right_set(&vert_tracker);
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
   // Configure your chassis controls
   chassis.opcontrol_curve_buttons_toggle(true);   // Enables modifying the controller curve with buttons on the joysticks
   chassis.opcontrol_drive_activebrake_set(0.0);   // Sets the active brake kP. We recommend ~2.  0 will disable.
   chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
+
+  resetOdom();
+  pros::Task odom_task(odomTask);
 
   // Set the drive to your own constants from autons.cpp!
   default_constants();
@@ -70,6 +88,7 @@ void initialize() {
   // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);  // If using tank, only the left side is used.
   // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
 
+<<<<<<< HEAD
   // Autonomous Selector using LLEMU
   ez::as::auton_selector.autons_add({
   //     {"Drive\n\nDrive forward and come back", drive_example},
@@ -94,13 +113,21 @@ void initialize() {
       {"Skills\n\nAuton for Skills.", Skills},
       //{"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
    });
+=======
+// Autonomous Selector using LLEMU
+ez::as::auton_selector.autons_add({
+  {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+  {"Skills\n\n This is skills", Skills},
+ 
+});
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
 
 
   // Initialize chassis and auton selector
   chassis.initialize();
   ez::as::initialize();
-  master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
+  master.rumble(chassis.drive_imu_calibrated() ? ".." : "---");
   
 }
 
@@ -138,6 +165,10 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
+<<<<<<< HEAD
+=======
+  resetOdom();
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
@@ -265,16 +296,18 @@ void ez_template_extras() {
  */
 void opcontrol() {
   // This is preference to what you like to drive on
-
-  
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
-
   
 
   while (true) {
+<<<<<<< HEAD
     printOdom();
    
 
+=======
+
+    printOdom();
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
     ArmAction();
     IntakeLiftToggle();
     MatchLoading();
@@ -286,10 +319,6 @@ void opcontrol() {
     //DriveControl();  // Run the drive control function
     
     
-    // . . .
-    // Put more user control code here!
-    // . . .
-
     
 
     if(master.get_digital(DIGITAL_R2)) {
@@ -298,17 +327,6 @@ void opcontrol() {
     else if(master.get_digital(DIGITAL_R1)) {
       FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
     } 
-    // else if(master.get_digital(DIGITAL_B) == true) {
-    //   Arm.move_absolute(-530,600);  // Stop the intake motor when B is pressed
-    //   KnownState=1;
-    //   pros::delay(200);
-    // }
-    // else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
-    //   Arm.move_absolute(0,200);  // Stop the intake motor when B is released
-    //   KnownState=0;
-    //   pros::delay(200);
-
-    // }
     else{
       FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
     }

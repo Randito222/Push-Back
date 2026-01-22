@@ -26,6 +26,7 @@ void setDrivePower(int fl, int fr, int bl, int br) {
 // Driver control (FIELD CENTRIC)
 // =============================
 void DriveControl() {
+<<<<<<< HEAD
   static int fl = 0, fr = 0, bl = 0, br = 0;
   constexpr int slew = 50;
 
@@ -50,6 +51,48 @@ void DriveControl() {
     if (cur < tgt) cur += slew;
     else if (cur > tgt) cur -= slew;
     if (std::abs(tgt - cur) < slew) cur = tgt;
+=======
+  static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
+  const int slewRate = 50;
+
+  double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+  double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+  double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+
+  if (fabs(forward) < 5) forward = 0;
+  if (fabs(strafe)  < 5) strafe  = 0;
+  if (fabs(rotate)  < 5) rotate  = 0;
+
+  double headingRad = IMU.get_rotation() * M_PI / 180.0;
+
+  // Field -> robot (rotate by -heading)
+  double f =  forward * cos(headingRad) + strafe * sin(headingRad);
+  double s = -forward * sin(headingRad) + strafe * cos(headingRad);
+  double r = rotate;
+
+  // Mix
+  double fl = f + s + r;
+  double fr = f - s - r;
+  double bl = f - s + r;
+  double br = f + s - r;
+
+  // Normalize
+  double maxMag = std::max({fabs(fl), fabs(fr), fabs(bl), fabs(br)});
+  if (maxMag > 127.0) {
+    double scale = 127.0 / maxMag;
+    fl *= scale; fr *= scale; bl *= scale; br *= scale;
+  }
+
+  int flTarget = (int)fl;
+  int frTarget = (int)fr;
+  int blTarget = (int)bl;
+  int brTarget = (int)br;
+
+  auto applySlew = [&](int target, int &current) {
+    int diff = target - current;
+    if (abs(diff) <= slewRate) current = target;
+    else current += (diff > 0 ? slewRate : -slewRate);
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
   };
 
   slewApply(tFL, fl);
@@ -57,6 +100,7 @@ void DriveControl() {
   slewApply(tBL, bl);
   slewApply(tBR, br);
 
+<<<<<<< HEAD
   setDrivePower(fl, fr, bl, br);
 }
 
@@ -66,6 +110,55 @@ void DriveControl() {
 void DriveControlBackUp() {
   static int fl = 0, fr = 0, bl = 0, br = 0;
   constexpr int slew = 50;
+=======
+  setDrivePower(flPower, frPower, blPower, brPower);
+}
+
+void DriveControlBackUp() {
+  static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
+  const int slewRate = 10;
+
+  double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
+  double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
+  double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+
+  if (fabs(forward) < 5) forward = 0;
+  if (fabs(strafe)  < 5) strafe  = 0;
+  if (fabs(rotate)  < 5) rotate  = 0;
+
+  double fl = forward + strafe + rotate;
+  double fr = forward - strafe - rotate;
+  double bl = forward - strafe + rotate;
+  double br = forward + strafe - rotate;
+
+  // Normalize
+  double maxMag = std::max({fabs(fl), fabs(fr), fabs(bl), fabs(br)});
+  if (maxMag > 127.0) {
+    double scale = 127.0 / maxMag;
+    fl *= scale; fr *= scale; bl *= scale; br *= scale;
+  }
+
+  int flTarget = (int)fl;
+  int frTarget = (int)fr;
+  int blTarget = (int)bl;
+  int brTarget = (int)br;
+
+  auto applySlew = [&](int target, int &current) {
+    int diff = target - current;
+    if (abs(diff) <= slewRate) current = target;
+    else current += (diff > 0 ? slewRate : -slewRate);
+  };
+
+  applySlew(flTarget, flPower);
+  applySlew(frTarget, frPower);
+  applySlew(blTarget, blPower);
+  applySlew(brTarget, brPower);
+
+  setDrivePower(flPower, frPower, blPower, brPower);
+}
+
+
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
   int f = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
   int s = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
@@ -128,6 +221,7 @@ void MatchLoading() {
   }
 }
 
+<<<<<<< HEAD
 // =============================
 // Arm
 // =============================
@@ -140,3 +234,35 @@ void ArmAction() {
     KnownState = 0;
   }
 }
+=======
+void ArmAction(){
+  if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-570,200);  // Stop the intake motor when B is pressed
+    KnownState=1;
+    pros::delay(200);
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+  }
+  else if (master.get_digital(DIGITAL_L1) == true && (IntakeLiftT == -1 || IntakeLiftT == 0)){
+    FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-570,200);  // Stop the intake motor when B is released
+    pros::delay(500);
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
+  
+  }
+  else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-700,120);  // Stop the intake motor when B is pressed
+    KnownState=1;
+    pros::delay(200);
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+  }
+  else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
+    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
+    KnownState=0;
+    pros::delay(200);
+
+  }
+}
+>>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
