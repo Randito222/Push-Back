@@ -63,14 +63,26 @@ void default_constants() {
 void AutonTesting(){
 
   FrontIntake.move(127); // Spins intake to grab preload
-  DriveToPoint_OdomPID(-7,8,0, 100, 1500, 40); 
+  DriveToPoint_OdomPID(-7,8,0, 100, 1200, 40); 
 
-  DriveToPoint_OdomPID(-7, 34,  0,30, 5000, 40);
+  DriveToPoint_OdomPID(-7, 37,  0,30, 4000, 40);
 
-  DriveToPoint_OdomPID(4, 34,  0,100, 3000, 40);
+  DriveToPoint_OdomPID(-7, 37,  -90,100, 1000, 40);
+
+  DriveToPoint_OdomPID(-16.5, 37,  -90,100, 1000, 40);
+
+  DriveToPoint_OdomPID(-16.5, 37,  -137,100, 1000, 40);
 
   IntakeLift.set_value(1);
-  DriveToPoint_OdomPID(4, 34,  -135,100, 3000, 40);
+  Arm.move_absolute(-920,55);  // Stop the intake motor when B is pressed
+  pros::delay(950); // Waits to make sure preload is out
+  IntakeLift.set_value(0);
+  Arm.move_absolute(0,200);  // Stop the intake motor when B is pressed
+
+  DriveToPoint_OdomPID(-16.2, 37,  -180,100, 1000, 40);
+  
+
+  DriveToPoint_OdomPID(-46, 0, -180,100, 2000, 40);
 
   
 
