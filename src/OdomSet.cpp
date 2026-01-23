@@ -4,22 +4,16 @@
 #include <cmath>
 
 // =============================
-// Wheel geometry 
+// Wheel geometry
 // =============================
 constexpr double VERT_DIAM_IN = 2.75;
 constexpr double HORZ_DIAM_IN = 2.00;
 
 // =============================
-// ODOM OFFSETS 
+// ODOM OFFSETS
 // =============================
-// Distance between the LEFT and RIGHT vertical tracking wheels (center-to-center).
-// Measure in inches.
-constexpr double TRACK_WIDTH_IN = 6.0;   // <-- CHANGE THIS
-
-// Horizontal wheel offset from robot center (inches):
-// + if the horizontal wheel is IN FRONT of the robot center
-// - if the horizontal wheel is BEHIND the robot center
-constexpr double H_OFFSET_IN = -3.0;       // <-- CHANGE THIS (0 only if it's exactly centered)
+constexpr double TRACK_WIDTH_IN = 6.0;   // CHANGE THIS (inches, center-to-center)
+constexpr double H_OFFSET_IN    = -3.0;  // CHANGE THIS (inches, +front / -back)
 
 // =============================
 constexpr double DEG2RAD = M_PI / 180.0;
@@ -28,9 +22,9 @@ constexpr double RAD2DEG = 180.0 / M_PI;
 // =============================
 // Odom State (global)
 // =============================
-double odomX = 0.0;      // field X (right +)
-double odomY = 0.0;      // field Y (forward +)
-double odomTheta = 0.0;  // heading radians
+double odomX = 0.0;
+double odomY = 0.0;
+double odomTheta = 0.0;
 
 // =============================
 // Helpers
@@ -39,8 +33,7 @@ static double wheelCirc(double diamIn) {
   return M_PI * diamIn;
 }
 
-// pros::Rotation get_position() returns centidegrees (cdeg)
-// 36000 cdeg per revolution
+// Rotation get_position() returns centidegrees (cdeg): 36000 cdeg per rev
 static double rotCdegToInches(double cdeg, double diamIn) {
   return (cdeg / 36000.0) * wheelCirc(diamIn);
 }
@@ -65,7 +58,7 @@ static double lastHeading = 0.0;
 void updateOdom() {
   if (IMU.is_calibrating()) return;
 
-  // Read sensors (apply sign flips here ONCE)
+  // Read sensors (apply sign flips once)
   // Forward should be + for BOTH vertical wheels.
   const double vlNow = rotCdegToInches(-LVerticalTracker.get_position(), VERT_DIAM_IN);
   const double vrNow = rotCdegToInches( RVerticalTracker.get_position(), VERT_DIAM_IN);
@@ -87,26 +80,16 @@ void updateOdom() {
   lastH  = hNow;
   lastHeading = heading;
 
-  // =============================
   // Robot-relative deltas
-  // =============================
-  // Forward/back is average of vertical wheels
   const double dY_robot = (dVL + dVR) * 0.5;
-
-  // Strafe is horizontal wheel minus the amount caused purely by turning
-  // Turning causes the horizontal wheel to roll: arc = dTheta * offset
   const double dX_robot = dH - (dTheta * H_OFFSET_IN);
 
-  // Compare IMU turn vs wheel turn:
-  // const double dTheta_wheels = (dVR - dVL) / TRACK_WIDTH_IN;
-
-  // =============================
-  // Robot -> Field transform (use mid-heading)
-  // =============================
+  // Robot -> Field transform using mid-heading
   const double midHeading = heading - (dTheta * 0.5);
   const double sinH = std::sin(midHeading);
   const double cosH = std::cos(midHeading);
 
+  // Convention: heading=0 means facing +Y, so this matches your drive code
   odomX += dX_robot * cosH - dY_robot * sinH;
   odomY += dX_robot * sinH + dY_robot * cosH;
 
@@ -114,24 +97,34 @@ void updateOdom() {
 }
 
 // =============================
-// Reset
+// Reset helpers
 // =============================
-void resetOdom() {
-  odomX = 0.0;
-  odomY = 0.0;
-  odomTheta = 0.0;
+void resetOdomPoseRad(double x_in, double y_in, double thetaRad) {
+  odomX = x_in;
+  odomY = y_in;
+  odomTheta = wrapRad(thetaRad);
 
-  IMU.set_rotation(0);
+  // Set IMU to match pose heading (degrees)
+  IMU.set_rotation(odomTheta * RAD2DEG);
 
   // Clear rotation sensors
   LVerticalTracker.reset_position();
   RVerticalTracker.reset_position();
   HorizontalTracker.reset_position();
 
+  // Reset last readings to match now
   lastVL = 0.0;
   lastVR = 0.0;
   lastH  = 0.0;
-  lastHeading = 0.0;
+  lastHeading = odomTheta;
+}
+
+void resetOdomPose(double x_in, double y_in, double thetaDeg) {
+  resetOdomPoseRad(x_in, y_in, thetaDeg * DEG2RAD);
+}
+
+void resetOdom() {
+  resetOdomPoseRad(0.0, 0.0, 0.0);
 }
 
 // =============================
