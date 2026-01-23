@@ -62,18 +62,8 @@ void default_constants() {
 
 void AutonTesting(){
 
-<<<<<<< HEAD
-  DriveToPoint_OdomPID(1, 10, 0);
-  // chassis.pid_drive_set(144, DRIVE_SPEED, true);
-  // chassis.pid_wait();
-  // // === MOVE 1: Forward 36 inches ===
-  // pros::Task move1([]() {
-  //   x_drive_pid_task(36.0, 0.0, 0.0); // Move to (36, 0) facing 0 degrees
-  // });
-=======
   FrontIntake.move(127); // Spins intake to grab preload
   DriveToPoint_OdomPID(-7,8,0, 100, 1200, 40); 
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
   DriveToPoint_OdomPID(-7, 37,  0,30, 4000, 40);
 

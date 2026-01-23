@@ -1,57 +1,49 @@
-#include "Functions.hpp"
 #include "main.h"
-#include <cmath>
+#include "subsystems.hpp"
+/*
 
-// =============================
-// Globals (from header)
-// =============================
-int IntakeLiftT = -1;
-int KnownState  = 0;
+Drive Controls
 
-// =============================
-// Drive helpers
-// =============================
+**/
+
 void setDrivePower(int fl, int fr, int bl, int br) {
+  // Set all motors for each wheel group
   Front_Left_1.move(fl);
   Front_Left_2.move(fl);
+
   Front_Right_1.move(fr);
   Front_Right_2.move(fr);
+
   Back_Left_1.move(bl);
   Back_Left_2.move(bl);
+
   Back_Right_1.move(br);
   Back_Right_2.move(br);
+} 
+
+// void IntakeSpin() {
+//   // Spin the intake motor
+//   Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
+// }
+
+// Start by storing the robot's current heading as the initial target
+double targetAngle = IMU.get_heading();
+bool lastButtonState = false;  // Tracks the last state of the button to detect presses
+
+int slewDrive(int target, int current, int rate) {
+    if (current < target)
+        current += rate;
+    else if (current > target)
+        current -= rate;
+
+    // Snap when close
+    if (abs(target - current) < rate)
+        current = target;
+
+    return current;
 }
 
-// =============================
-// Driver control (FIELD CENTRIC)
-// =============================
 void DriveControl() {
-<<<<<<< HEAD
-  static int fl = 0, fr = 0, bl = 0, br = 0;
-  constexpr int slew = 50;
-
-  double f = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-  double s = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-  double r = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-
-  if (std::fabs(f) < 5) f = 0;
-  if (std::fabs(s) < 5) s = 0;
-  if (std::fabs(r) < 5) r = 0;
-
-  double h = IMU.get_rotation() * M_PI / 180.0;
-  double tf =  f * cos(h) + s * sin(h);
-  double ts = -f * sin(h) + s * cos(h);
-
-  int tFL = tf + ts + r;
-  int tFR = tf - ts - r;
-  int tBL = tf - ts + r;
-  int tBR = tf + ts - r;
-
-  auto slewApply = [&](int tgt, int &cur) {
-    if (cur < tgt) cur += slew;
-    else if (cur > tgt) cur -= slew;
-    if (std::abs(tgt - cur) < slew) cur = tgt;
-=======
   static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
   const int slewRate = 50;
 
@@ -92,25 +84,13 @@ void DriveControl() {
     int diff = target - current;
     if (abs(diff) <= slewRate) current = target;
     else current += (diff > 0 ? slewRate : -slewRate);
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
   };
 
-  slewApply(tFL, fl);
-  slewApply(tFR, fr);
-  slewApply(tBL, bl);
-  slewApply(tBR, br);
+  applySlew(flTarget, flPower);
+  applySlew(frTarget, frPower);
+  applySlew(blTarget, blPower);
+  applySlew(brTarget, brPower);
 
-<<<<<<< HEAD
-  setDrivePower(fl, fr, bl, br);
-}
-
-// =============================
-// Driver control (ROBOT CENTRIC)
-// =============================
-void DriveControlBackUp() {
-  static int fl = 0, fr = 0, bl = 0, br = 0;
-  constexpr int slew = 50;
-=======
   setDrivePower(flPower, frPower, blPower, brPower);
 }
 
@@ -158,83 +138,89 @@ void DriveControlBackUp() {
 }
 
 
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
-  int f = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-  int s = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-  int r = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
+// void IntakeReverse(){
+//   Intake.move_velocity(-200);
+// }
 
-  int tFL = f + s + r;
-  int tFR = f - s - r;
-  int tBL = f - s + r;
-  int tBR = f + s - r;
-
-  auto slewApply = [&](int tgt, int &cur) {
-    if (cur < tgt) cur += slew;
-    else if (cur > tgt) cur -= slew;
-    if (std::abs(tgt - cur) < slew) cur = tgt;
-  };
-
-  slewApply(tFL, fl);
-  slewApply(tFR, fr);
-  slewApply(tBL, bl);
-  slewApply(tBR, br);
-
-  setDrivePower(fl, fr, bl, br);
+void IntakeLiftToggle(){
+  if(master.get_digital_new_press(DIGITAL_DOWN)){
+      IntakeLiftT *= -1;
+      if(IntakeLiftT == 1){
+        IntakeLift.set_value(true);
+      }
+      else{
+        IntakeLift.set_value(false);
+      }
+    }
 }
 
-// =============================
-// Intake / mechanisms
-// =============================
-void IntakeSpin() {
-  FrontIntake.move(127);
-}
+int DescoreLV = -1;
+void descoreLeftT(){
+  DescoreLV*=-1;
 
-void IntakeReverse() {
-  FrontIntake.move(-127);
-}
+  if (DescoreLV==1){
+    DescoreLeft.set_value(1);
+  }
 
-void IntakeLiftToggle() {
-  if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)) {
-    IntakeLiftT *= -1;
-    IntakeLift.set_value(IntakeLiftT == 1);
+  else{
+    DescoreLeft.set_value(0);
+}
+}
+// int DescoreRV = -1;
+// void descoreRight(){
+//   DescoreRV*=-1;
+
+//   if (DescoreRV==1){
+//     DescoreRight.set_value(1);
+//   }
+
+//   else{
+//     DescoreRight.set_value(0);
+// }
+// }
+
+// int ScoreP = -1;
+// void ScoringP(){
+//   ScoreP*=-1;
+
+//   if (ScoreP==1){
+//     ScorePiston.set_value(1);
+//   }
+
+//   else{
+//     ScorePiston.set_value(0);
+// }
+// }
+
+int IntakeScoreV = -1;
+void IntakeScoreToggle(){
+  IntakeScoreV*=-1;
+
+  if (IntakeScoreV==1){
+    IntakeLift.set_value(1);
+  }
+
+  else{
+    IntakeLift.set_value(0);
   }
 }
 
-void descoreLeftT() {
-  static int state = -1;
-  state *= -1;
-  DescoreLeft.set_value(state == 1);
-}
+int MatchLoadV = -1;
+void MatchLoading(){
+  if(master.get_digital_new_press(DIGITAL_RIGHT)){
+    MatchLoadV*=-1;
 
-void IntakeScoreToggle() {
-  static int state = -1;
-  state *= -1;
-  IntakeLift.set_value(state == 1);
-}
+    if (MatchLoadV==1){
+      TongueMech.set_value(1);
+    }
 
-void MatchLoading() {
-  static int state = -1;
-  if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)) {
-    state *= -1;
-    TongueMech.set_value(state == 1);
+    else{
+      TongueMech.set_value(0);
+    }
   }
 }
 
-<<<<<<< HEAD
-// =============================
-// Arm
-// =============================
-void ArmAction() {
-  if (master.get_digital(pros::E_CONTROLLER_DIGITAL_B)) {
-    Arm.move_absolute(-600, 180);
-    KnownState = 1;
-  } else if (KnownState == 1) {
-    Arm.move_absolute(0, 180);
-    KnownState = 0;
-  }
-}
-=======
 void ArmAction(){
   if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
@@ -265,4 +251,3 @@ void ArmAction(){
 
   }
 }
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9

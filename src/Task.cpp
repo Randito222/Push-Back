@@ -1,58 +1,81 @@
-<<<<<<< HEAD
-#include "Task.hpp"
-#include "Functions.hpp"
-=======
 #include "EZ-Template/util.hpp"
 #include "main.h"
 #include "pros/misc.hpp"
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 #include "subsystems.hpp"
 // #include "pros/competition.hpp"
 
-int colorMode = 0;
-int BackIntakeControl = 0;
+double Get_Color1() {
+  return OP1.get_hue();
+}
+double Get_Color2() {
+  return OP2.get_hue();
+}
 
-double Get_Color1() { return OP1.get_hue(); }
-double Get_Color2() { return OP2.get_hue(); }
 
 void Color_Mode() {
-  bool last = false;
+  bool lastButtonState = false;  // Tracks the last state of the button to detect presses
+
   while (true) {
-    bool cur = master.get_digital(pros::E_CONTROLLER_DIGITAL_Y);
-    if (cur && !last) colorMode ^= 1;
-    last = cur;
-    pros::delay(20);
+    // Check if the Y button is currently pressed
+    bool currentButtonState = master.get_digital(pros::E_CONTROLLER_DIGITAL_Y);
+
+    // Only act when the button changes from not pressed to pressed (rising edge)
+    if (currentButtonState && !lastButtonState) {
+      colorMode = 1 - colorMode;  // Toggle between 0 (Red) and 1 (Blue)
+    }
+
+    // Update the last button state
+    lastButtonState = currentButtonState;
+
+    pros::delay(20); // Small delay to prevent CPU overload
   }
 }
 
 void Color_Sorter() {
   while (true) {
-    if (BackIntakeControl) {
-      (colorMode == 0 ? Get_Color1() : Get_Color2());
+    Get_Color1();
+    Get_Color2();
+
+    if(colorMode == 0) { // Sorting based on Red
+        if(BackIntakeControl == 1){
+
+            // if(Get_Color1() < 100) { // Adjust threshold value as needed
+            //   // Detected color is Red
+            //   BackIntake.move(-127);
+            //   pros::delay(500); // Run motor for 500 milliseconds
+            // } else {
+            //   BackIntake.move(127);
+            // }
+    
+      
+        } 
     }
-    pros::delay(20);
+    else { // Sorting based on Blue 
+        if(BackIntakeControl == 1){
+
+            // if(Get_Color2() > 200) { // Adjust threshold value as needed
+            //   // Detected color is Blue
+            //   BackIntake.move(-127);
+            //   pros::delay(500); // Run motor for 500 milliseconds
+            // } else {
+            //   BackIntake.move(127);
+            // }
+    
+      
+        } 
+    }
+    pros::delay(20); // Small delay to prevent CPU overload
   }
 }
 
 void Drive_Controls_swap() {
-  bool fieldCentric = true;
-  bool last = false;
+  bool lastButtonState = false;  // Tracks the last state of the button to detect presses
+  bool fieldCentric = true;     // Start in robot-centric mode
 
   while (true) {
-    bool cur = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
-    if (cur && !last) fieldCentric = !fieldCentric;
-    last = cur;
+    // Check if the X button is currently pressed
+    bool currentButtonState = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
 
-<<<<<<< HEAD
-    fieldCentric ? DriveControl() : DriveControlBackUp();
-    pros::delay(20);
-  }
-}
-
-pros::Task Color_Mode_Task(Color_Mode);
-pros::Task Color_Sorter_Task(Color_Sorter);
-pros::Task Drive_Controls_task(Drive_Controls_swap);
-=======
 
     // Only act when the button changes from not pressed to pressed (rising edge)
     if (currentButtonState && !lastButtonState) {
@@ -79,4 +102,3 @@ pros::Task Drive_Controls_task(Drive_Controls_swap);
     pros::delay(20); // Small delay to prevent CPU overload
   }
 }
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9

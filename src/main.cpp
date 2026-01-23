@@ -21,7 +21,7 @@ ez::Drive chassis(
     {-14, 13, -12,11},     // Left Chassis Ports (negative port will reverse it!)
     {18, -17, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
 
-    6,      // IMU Port
+    2,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -32,8 +32,8 @@ ez::Drive chassis(
 //  - you should get positive values on the encoders going FORWARD and RIGHT
 // - `2.75` is the wheel diameter
 // - `4.0` is the distance from the center of the wheel to the center of the robot
-// ez::tracking_wheel horiz_tracker(15, 2, 2.5);  // This tracking wheel is perpendicular to the drive wheels
-// ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is parallel to the drive wheels
+ez::tracking_wheel horiz_tracker(15, 2, 2.5);  // This tracking wheel is perpendicular to the drive wheels
+ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is parallel to the drive wheels
 
 /**
  * Runs initialization code. This occurs as soon as the program is started.
@@ -44,34 +44,18 @@ ez::Drive chassis(
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
-<<<<<<< HEAD
- 
-=======
   
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
   // Look at your horizontal tracking wheel and decide if it's in front of the midline of your robot or behind it
   //  - change `back` to `front` if the tracking wheel is in front of the midline
   //  - ignore this if you aren't using a horizontal tracker
-<<<<<<< HEAD
-  // chassis.odom_tracker_back_set(&horiz_tracker);
-  // Look at your vertical tracking wheel and decide if it's to the left or right of the center of the robot
-  //  - change `left` to `right` if the tracking wheel is to the right of the centerline
-  //  - ignore this if you aren't using a vertical tracker
-  // chassis.odom_tracker_right_set(&vert_tracker);
-
-  resetOdom();
-
-  static pros::Task odom_task(odomTask);
-=======
   //chassis.odom_tracker_back_set(&horiz_tracker);
   // Look at your vertical tracking wheel and decide if it's to the left or right of the center of the robot
   //  - change `left` to `right` if the tracking wheel is to the right of the centerline
   //  - ignore this if you aren't using a vertical tracker
   //chassis.odom_tracker_right_set(&vert_tracker);
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
   // Configure your chassis controls
   chassis.opcontrol_curve_buttons_toggle(true);   // Enables modifying the controller curve with buttons on the joysticks
@@ -88,39 +72,12 @@ void initialize() {
   // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);  // If using tank, only the left side is used.
   // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
 
-<<<<<<< HEAD
-  // Autonomous Selector using LLEMU
-  ez::as::auton_selector.autons_add({
-  //     {"Drive\n\nDrive forward and come back", drive_example},
-  //     {"Turn\n\nTurn 3 times.", turn_example},
-  //     {"Drive and Turn\n\nDrive forward, turn, come back", drive_and_turn},
-  //     {"Drive and Turn\n\nSlow down during drive", wait_until_change_speed},
-  //     {"Swing Turn\n\nSwing in an 'S' curve", swing_example},
-  //     {"Motion Chaining\n\nDrive forward, turn, and come back, but blend everything together :D", motion_chaining},
-  //     {"Combine all 3 movements", combining_movements},
-  //     {"Interference\n\nAfter driving forward, robot performs differently if interfered or not", interfered_example},
-  //     {"Simple Odom\n\nThis is the same as the drive example, but it uses odom instead!", odom_drive_example},
-  //     {"Pure Pursuit\n\nGo to (0, 30) and pass through (6, 10) on the way.  Come back to (0, 0)", odom_pure_pursuit_example},
-  //     {"Pure Pursuit Wait Until\n\nGo to (24, 24) but start running an intake once the robot passes (12, 24)", odom_pure_pursuit_wait_until_example},
-  //     {"Boomerang\n\nGo to (0, 24, 45) then come back to (0, 0, 0)", odom_boomerang_example},
-  //     {"Boomerang Pure Pursuit\n\nGo to (0, 24, 45) on the way to (24, 24) then come back to (0, 0, 0)", odom_boomerang_injected_pure_pursuit_example},
-  //     {"Measure Offsets\n\nThis will turn the robot a bunch of times and calculate your offsets for your tracking wheels.", measure_offsets},
-      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
-       {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
-       {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
-      //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
-      // {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
-      {"Skills\n\nAuton for Skills.", Skills},
-      //{"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
-   });
-=======
 // Autonomous Selector using LLEMU
 ez::as::auton_selector.autons_add({
   {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
   {"Skills\n\n This is skills", Skills},
  
 });
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
 
 
 
@@ -165,14 +122,11 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-<<<<<<< HEAD
-=======
   resetOdom();
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
-  //chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
+  chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
 
   /*
@@ -300,14 +254,8 @@ void opcontrol() {
   
 
   while (true) {
-<<<<<<< HEAD
-    printOdom();
-   
-
-=======
 
     printOdom();
->>>>>>> 03c2fb1e071a3f655c89c1b43e686c9ef89060f9
     ArmAction();
     IntakeLiftToggle();
     MatchLoading();
