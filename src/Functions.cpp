@@ -45,7 +45,7 @@ int slewDrive(int target, int current, int rate) {
 
 void DriveControl() {
   static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
-  const int slewRate = 50;
+  const int slewRate = 40;
 
   double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
   double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
@@ -96,7 +96,7 @@ void DriveControl() {
 
 void DriveControlBackUp() {
   static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
-  const int slewRate = 10;
+  const int slewRate = 40;
 
   double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
   double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
@@ -155,43 +155,56 @@ void IntakeLiftToggle(){
     }
 }
 
-int DescoreLV = -1;
-void descoreLeftT(){
-  DescoreLV*=-1;
+bool bothExtended = false;     // have both pistons been deployed?
+bool descoreState = false;    // current descore toggle state
+bool holdingY = false;
 
-  if (DescoreLV==1){
-    DescoreLeft.set_value(1);
-  }
+uint32_t yPressStart = 0;
+const uint32_t HOLD_TIME_MS = 1200;
 
-  else{
-    DescoreLeft.set_value(0);
+void descoring() {
+    bool yPressed = master.get_digital(DIGITAL_Y);
+
+    // =============================
+    // Button just pressed
+    // =============================
+    if (master.get_digital_new_press(DIGITAL_Y)) {
+        yPressStart = pros::millis();
+        holdingY = true;
+
+        // First ever press to deploy both
+        if (!bothExtended) {
+            Descore.set_value(1);
+            DescoreLift.set_value(1);
+            bothExtended = true;
+            descoreState = true;
+        }
+        // After first press, toggle ONLY descore
+        else {
+            descoreState = !descoreState;
+            Descore.set_value(descoreState);
+        }
+    }
+
+    // Holding Y (check for reset)
+    if (holdingY && yPressed) {
+        if (pros::millis() - yPressStart >= HOLD_TIME_MS) {
+            // Retract both
+            Descore.set_value(0);
+            DescoreLift.set_value(0);
+
+            bothExtended = false;
+            descoreState = false;
+            holdingY = false;
+        }
+    }
+
+    // Button released
+    if (!yPressed) {
+        holdingY = false;
+    }
 }
-}
-// int DescoreRV = -1;
-// void descoreRight(){
-//   DescoreRV*=-1;
 
-//   if (DescoreRV==1){
-//     DescoreRight.set_value(1);
-//   }
-
-//   else{
-//     DescoreRight.set_value(0);
-// }
-// }
-
-// int ScoreP = -1;
-// void ScoringP(){
-//   ScoreP*=-1;
-
-//   if (ScoreP==1){
-//     ScorePiston.set_value(1);
-//   }
-
-//   else{
-//     ScorePiston.set_value(0);
-// }
-// }
 
 int IntakeScoreV = -1;
 void IntakeScoreToggle(){
@@ -224,7 +237,7 @@ void MatchLoading(){
 void ArmAction(){
   if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,200);  // Stop the intake motor when B is pressed
+    Arm.move_absolute(-590,200);  // Stop the intake motor when B is pressed
     KnownState=1;
     pros::delay(200);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed

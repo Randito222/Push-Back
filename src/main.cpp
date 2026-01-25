@@ -74,7 +74,9 @@ void initialize() {
 
 // Autonomous Selector using LLEMU
 ez::as::auton_selector.autons_add({
-  {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+  //{"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+  {"Right Side\n\n This auton grabs 3 blocks on the right side and scores them.", RightSideAuton},
+  {"Off Park\n\n This auton gets the robot off the park if alliance has full awp.", OffParkAuton},
   {"Skills\n\n This is skills", Skills},
  
 });
@@ -259,6 +261,7 @@ void opcontrol() {
     ArmAction();
     IntakeLiftToggle();
     MatchLoading();
+    descoring();
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     //chassis.opcontrol_tank();

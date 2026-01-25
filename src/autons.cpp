@@ -71,7 +71,7 @@ void AutonTesting(){
 
   DriveToPoint_OdomPID(-16.5, 37,  -90,100, 1000, 40);
 
-  DriveToPoint_OdomPID(-16.5, 37,  -137,100, 1000, 40);
+  DriveToPoint_OdomPID(-16.5, 37.5,  -137,100, 1000, 40);
 
   IntakeLift.set_value(1);
   Arm.move_absolute(-920,55);  // Stop the intake motor when B is pressed
@@ -79,12 +79,8 @@ void AutonTesting(){
   IntakeLift.set_value(0);
   Arm.move_absolute(0,200);  // Stop the intake motor when B is pressed
 
-  DriveToPoint_OdomPID(-16.2, 37,  -180,100, 1000, 40);
-  
-
-  DriveToPoint_OdomPID(-46, 0, -180,100, 2000, 40);
-
-  
+  DriveToPoint_OdomPID(-16.5, 37,  -180,100, 1000, 40);  
+ 
 
 
 
@@ -173,31 +169,48 @@ void soloAWP(){
 }
 
 void RightSideAuton(){
-  // FrontIntake.move(127); // Spins intake to grab 3 blocks
 
-  // chassis.pid_drive_set(7, DRIVE_SPEED);
-  // chassis.pid_wait_quick_chain();
+  
+  FrontIntake.move(127); // Spins intake to grab 3 blocks
 
-  // chassis.pid_turn_set(13,TURN_SPEED);
-  // chassis.pid_wait_quick_chain();
+  chassis.pid_drive_set(7, DRIVE_SPEED);
+  chassis.pid_wait_quick_chain();
 
-  // chassis.pid_drive_set(23, 50, true); // Goes towards the 3 block area
-  // chassis.pid_wait();
+  chassis.pid_turn_set(12,TURN_SPEED);
+  chassis.pid_wait_quick_chain();
 
-  // pros::delay(1000); // Waits to make sure blocks are in intake
+  chassis.pid_drive_set(10, 100, true); // Goes towards the 3 block area
+  chassis.pid_wait_quick_chain();
 
-  // chassis.pid_drive_set(-8, DRIVE_SPEED);
-  // chassis.pid_wait_quick_chain();
+  TongueMech.set_value(1);
 
-  // chassis.pid_turn_set(-44, TURN_SPEED);
-  // chassis.pid_wait();
+  chassis.pid_drive_set(13, 50, true); // Goes towards the 3 block area
+  chassis.pid_wait();
 
-  // chassis.pid_drive_set(15, DRIVE_SPEED, true); // Backs away from 3 block area into the side tube
-  // chassis.pid_wait_quick_chain();
+  pros::delay(1000); // Waits to make sure blocks are in intake
 
-  // FrontIntake.move(-90); // Outtakes blocks into the goal
-  // pros::delay(2100); // Waits to make sure blocks are out
-  // FrontIntake.move(0); // Stops intake;
+  TongueMech.set_value(0);
+
+  chassis.pid_drive_set(-8, DRIVE_SPEED);
+  chassis.pid_wait_quick_chain();
+
+  chassis.pid_turn_set(-55, TURN_SPEED);
+  chassis.pid_wait();
+
+  chassis.pid_drive_set(14, DRIVE_SPEED, true); // Backs away from 3 block area into the side tube
+  chassis.pid_wait_quick_chain();
+
+  FrontIntake.move(-90); // Outtakes blocks into the goal
+  pros::delay(2100); // Waits to make sure blocks are out
+  FrontIntake.move(0); // Stops intake;
+
+  chassis.pid_drive_set(-3, DRIVE_SPEED); // Turns to face the other side tube
+  chassis.pid_wait_quick_chain();
+
+  chassis.pid_turn_set(0, TURN_SPEED); // Turns to face the other side tube
+  chassis.pid_wait();
+
+  DriveToPoint_OdomPID(0, 0, 0);
 
   
 
@@ -282,60 +295,8 @@ void LeftSideAuton(){
 
 }
 
-void BruinRightAuto(){
-  chassis.pid_drive_set(14, DRIVE_SPEED ); // Goes towards the preload area
-  chassis.pid_wait();
-  FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-  MiddleIntake.move(127);
-
-  chassis.pid_turn_set(20, TURN_SPEED); // Turns to face preload
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(14, 20); // Moves forward to grab preload
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(-47, TURN_SPEED); // Turns to face the goal
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(11, DRIVE_SPEED); // Backs away from preload area into the side tube
-  chassis.pid_wait();
-
-  FrontIntake.move(-127);  // Stop the intake motor when R2 is pressed
-  MiddleIntake.move(-127);
-  TopIntake.move(-127);
-  pros::delay(1500); // Waits to make sure preload is out
-
-  chassis.pid_drive_set(-40, DRIVE_SPEED); // Moves forward to clear the side tube
-  chassis.pid_wait();
-
-  MatchLoading();
-
-  chassis.pid_turn_set(2, TURN_SPEED); // Turns to face middle balls and middle tube
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(6, DRIVE_SPEED, true); // Drives to middle balls and middle tube 
-  chassis.pid_wait_quick_chain();
-
-  FrontIntake.move(0);  // Spin the intake motor when R1 is pressed
-  MiddleIntake.move(127);
-  chassis.pid_drive_set(-8, DRIVE_SPEED); // Drives to middle balls and middle tube 
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(8, DRIVE_SPEED, true); // Drives to middle balls and middle tube
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(-8, DRIVE_SPEED); // Drives to middle balls and middle tube 
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(8, DRIVE_SPEED, true); // Drives to middle balls and middle tube
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(-8, DRIVE_SPEED); // Drives to middle balls and middle tube 
-  chassis.pid_wait_quick_chain();
-}
-
-void BruinLeftAuto(){
-  // Add auton code here
+void OffParkAuton(){
+  DriveToPoint_OdomPID(-5, 5, 0);
 }
 
 void Skills(){
