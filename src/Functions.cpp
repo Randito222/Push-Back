@@ -138,11 +138,6 @@ void DriveControlBackUp() {
 }
 
 
-
-// void IntakeReverse(){
-//   Intake.move_velocity(-200);
-// }
-
 void IntakeLiftToggle(){
   if(master.get_digital_new_press(DIGITAL_DOWN)){
       IntakeLiftT *= -1;
@@ -160,7 +155,7 @@ bool descoreState = false;    // current descore toggle state
 bool holdingY = false;
 
 uint32_t yPressStart = 0;
-const uint32_t HOLD_TIME_MS = 1200;
+const uint32_t HOLD_TIME_MS = 1000;
 
 void descoring() {
     bool yPressed = master.get_digital(DIGITAL_Y);
@@ -172,7 +167,7 @@ void descoring() {
         yPressStart = pros::millis();
         holdingY = true;
 
-        // First ever press to deploy both
+        // If both pistons are not yet extended, extend both
         if (!bothExtended) {
             Descore.set_value(1);
             DescoreLift.set_value(1);
