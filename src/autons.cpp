@@ -64,10 +64,10 @@ void default_constants() {
 
 void AutonTesting(){
 
-  resetOdomPose(66.059, -12.916, 270);
+  resetOdomPose(-49.529, 13.215, 0);
   pros::delay(250);
 
-followPath("test.txt", HeadingMode::HOLD, 270);
+  followPath("test3.txt",HeadingMode::HOLD,0);
 
   // FrontIntake.move(127); // Spins intake to grab preload
   // DriveToPoint_OdomPID(-7,8,0, 100, 1200, 40); 

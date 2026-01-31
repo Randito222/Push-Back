@@ -70,7 +70,7 @@ static FollowConfig defaults() {
   cfg.usePointSpeed = true;
 
   // Anchoring: treat first path point as (0,0) placed at current odom pose
-  cfg.anchorToRobotPose = true;
+  cfg.anchorToRobotPose = false;
 
   return cfg;
 }

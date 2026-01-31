@@ -10,16 +10,42 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+// =============================
+// Small helpers
+// =============================
 static double clampd(double v, double lo, double hi) {
   return (v < lo) ? lo : (v > hi) ? hi : v;
 }
+
 static double wrapDeg(double deg) {
   while (deg > 180) deg -= 360;
   while (deg < -180) deg += 360;
   return deg;
 }
 
-// Motor aliases (match your subsystems.hpp names)
+static double radToDeg(double r) { return r * 180.0 / M_PI; }
+
+static const char* headingModeStr(HeadingMode m) {
+  switch (m) {
+    case HeadingMode::ABSOLUTE:    return "ABS";
+    case HeadingMode::HOLD:        return "HOLD";
+    case HeadingMode::FACE_TARGET: return "FACE";
+    default:                       return "?";
+  }
+}
+
+// Print at most every N ms (prevents LCD spam + keeps loop smooth)
+static bool dbgTick(int periodMs = 120) {
+  static int last = 0;
+  int now = pros::millis();
+  if (now - last < periodMs) return false;
+  last = now;
+  return true;
+}
+
+// =============================
+// Motor aliases (match subsystems.hpp)
+// =============================
 #define FL1 Front_Left_1
 #define FL2 Front_Left_2
 #define FR1 Front_Right_1
@@ -42,7 +68,9 @@ static double MyslewLocal(double target, double current, double step) {
   return current + (diff > 0 ? step : -step);
 }
 
+// =============================
 // Closest-point search (incremental)
+// =============================
 static size_t closestIndex(const std::vector<PathPoint>& pts, double x, double y, size_t startIdx) {
   size_t best = startIdx;
   double bestD2 = 1e18;
@@ -55,7 +83,10 @@ static size_t closestIndex(const std::vector<PathPoint>& pts, double x, double y
   return best;
 }
 
-static PathPoint lookaheadPoint(const std::vector<PathPoint>& pts, double x, double y, size_t fromIdx, double lookaheadIn) {
+static PathPoint lookaheadPoint(const std::vector<PathPoint>& pts,
+                                double x, double y,
+                                size_t fromIdx,
+                                double lookaheadIn) {
   PathPoint last = pts.back();
   for (size_t i = fromIdx; i < pts.size(); i++) {
     double dx = pts[i].x - x;
@@ -65,6 +96,14 @@ static PathPoint lookaheadPoint(const std::vector<PathPoint>& pts, double x, dou
   return last;
 }
 
+// =============================
+// Normalize Jerry path:
+// If anchorToRobotPose = true, treat first point as (0,0) and
+// translate the whole path to current odom pose.
+// Coordinate convention in this project:
+//   odomX = forward axis
+//   odomY = right axis
+// =============================
 static void normalizeJerry(LoadedPath& path, const FollowConfig& cfg) {
   if (path.pts.size() < 2) return;
 
@@ -76,19 +115,21 @@ static void normalizeJerry(LoadedPath& path, const FollowConfig& cfg) {
     const double localY = p.y - y0;
 
     if (cfg.anchorToRobotPose) {
-      // Place the entire path onto the field at the robot's current odom pose
-      // (odomX = forward, odomY = right)
       p.x = odomX + localX;
       p.y = odomY + localY;
     }
   }
 }
 
-// --------------------
-// Core follower loop
-// --------------------
+// =============================
+// Core follower loop control
+// =============================
 static volatile bool g_running = false;
 static volatile bool g_cancel  = false;
+
+// Debug paging / latch
+static int g_dbgPage = 0;          // 0 or 1
+static int g_badLatchUntil = 0;    // timestamp until which we force BAD page
 
 static void runFollower(
     LoadedPath path,
@@ -100,12 +141,12 @@ static void runFollower(
 
   normalizeJerry(path, cfg);
 
-  PIDTest fPID{cfg.kP_xy, cfg.kI_xy, cfg.kD_xy}; // forward axis PID
-  PIDTest rPID{cfg.kP_xy, cfg.kI_xy, cfg.kD_xy}; // right axis PID
-  PIDTest tPID{cfg.kP_turn, cfg.kI_turn, cfg.kD_turn};
+  PIDTest fPID{cfg.kP_xy,   cfg.kI_xy,   cfg.kD_xy};    // forward axis PID
+  PIDTest rPID{cfg.kP_xy,   cfg.kI_xy,   cfg.kD_xy};    // right axis PID
+  PIDTest tPID{cfg.kP_turn, cfg.kI_turn, cfg.kD_turn};  // turn PID
   fPID.reset(); rPID.reset(); tPID.reset();
 
-  const double holdHeadingDeg = odomTheta * 180.0 / M_PI;
+  const double holdHeadingDeg = radToDeg(odomTheta);
 
   double fl=0, fr=0, bl=0, br=0;
   int start = pros::millis();
@@ -115,12 +156,21 @@ static void runFollower(
   while (pros::millis() - start < cfg.timeout_ms) {
     if (g_cancel) break;
 
-    // Current pose in VEX GPS axes
-    const double fNow = odomX;
-    const double rNow = odomY;
+    // Current pose in VEX GPS axes (your project mapping)
+    const double fNow = odomX;   // forward axis
+    const double rNow = odomY;   // right axis
 
+    // Find closest and lookahead
     idx = closestIndex(path.pts, fNow, rNow, idx);
     PathPoint la = lookaheadPoint(path.pts, fNow, rNow, idx, cfg.lookaheadIn);
+
+    // Closest point distance (diagnostic)
+    const double cdx = path.pts[idx].x - fNow;
+    const double cdy = path.pts[idx].y - rNow;
+    const double closestDist = std::hypot(cdx, cdy);
+
+    // Detect if lookahead fell back to last point
+    const bool laIsLast = (la.x == path.pts.back().x && la.y == path.pts.back().y);
 
     // Error to lookahead in FIELD frame (VEX GPS axes)
     const double fErr = la.x - fNow; // forward error
@@ -132,7 +182,7 @@ static void runFollower(
     const double distToEnd = std::hypot(endDf, endDr);
 
     // Heading target (0 deg points along +odomX, positive towards +odomY)
-    double headingDeg = odomTheta * 180.0 / M_PI;
+    const double headingDeg = radToDeg(odomTheta);
     double headingTarget = finalHeadingDeg;
 
     if (headingMode == HeadingMode::HOLD) {
@@ -144,16 +194,18 @@ static void runFollower(
       headingTarget = finalHeadingDeg;
     }
 
-    double tErr = wrapDeg(headingTarget - headingDeg);
+    const double tErr = wrapDeg(headingTarget - headingDeg);
 
     // End settle
-    bool headOk = (headingMode == HeadingMode::HOLD) ? true : (std::fabs(tErr) < cfg.endHeadDeg);
+    const bool headOk = (headingMode == HeadingMode::HOLD) ? true : (std::fabs(tErr) < cfg.endHeadDeg);
     if (distToEnd < cfg.endDistIn && headOk) {
       settled += 10;
       if (settled > 200) break;
-    } else settled = 0;
+    } else {
+      settled = 0;
+    }
 
-    // FIELD -> ROBOT transform (with field axes: forward=fErr, right=rErr)
+    // FIELD -> ROBOT transform (field axes: forward=fErr, right=rErr)
     const double sinH = std::sin(odomTheta);
     const double cosH = std::cos(odomTheta);
 
@@ -165,24 +217,31 @@ static void runFollower(
 
     // Speed limiting
     double maxSp = cfg.maxSpeed;
-    if (cfg.usePointSpeed && std::isfinite(la.speed)) {
+    const bool hasPtSpeed = (cfg.usePointSpeed && std::isfinite(la.speed));
+    if (hasPtSpeed) {
       double ptMax = clampd(std::fabs(la.speed), 10.0, cfg.maxSpeed);
       maxSp = std::min(maxSp, ptMax);
     }
-    double endScale = clampd(distToEnd / 18.0, 0.25, 1.0);
+
+    const double endScale = clampd(distToEnd / 18.0, 0.25, 1.0);
     maxSp *= endScale;
 
-    // PID outputs in robot frame
-    double fOut = clampd(fPID.step(robotForward), -maxSp, maxSp);
-    double rOut = clampd(rPID.step(robotRight),   -maxSp, maxSp);
+    // RAW PID outputs (before clamp)
+    const double fRaw = fPID.step(robotForward);
+    const double rRaw = rPID.step(robotRight);
 
     // Turn scaling while moving
-    double moveMag = std::hypot(robotForward, robotRight);
-    double turnScale = clampd(1.0 - (moveMag / 24.0), 0.25, 1.0);
-    double tOut = clampd(tPID.step(tErr) * turnScale, -maxSp, maxSp);
+    const double moveMag = std::hypot(robotForward, robotRight);
+    const double turnScale = clampd(1.0 - (moveMag / 24.0), 0.25, 1.0);
+    const double tRaw = tPID.step(tErr);
 
-    // Optional: suppress turning briefly at start to prevent initial spin
-    int elapsed = pros::millis() - start;
+    // Clamped outputs
+    double fOut = clampd(fRaw, -maxSp, maxSp);
+    double rOut = clampd(rRaw, -maxSp, maxSp);
+    double tOut = clampd(tRaw * turnScale, -maxSp, maxSp);
+
+    // Suppress turning briefly at start to prevent initial spin
+    const int elapsed = pros::millis() - start;
     if (elapsed < 300) tOut = 0;
 
     // X-drive mix:
@@ -213,10 +272,83 @@ static void runFollower(
     BL1.move((int)bl); BL2.move((int)bl);
     BR1.move((int)br); BR2.move((int)br);
 
-    // Debug
-    pros::lcd::print(2, "idx:%d end:%.1f la(%.1f,%.1f)", (int)idx, distToEnd, la.x, la.y);
-    pros::lcd::print(3, "errF f%.1f r%.1f | errR rf%.1f rr%.1f", fErr, rErr, robotForward, robotRight);
-    pros::lcd::print(4, "head %.1f targ %.1f tErr %.1f", headingDeg, headingTarget, tErr);
+    // Optional: toggle debug pages with LCD buttons
+    if (pros::lcd::read_buttons() & LCD_BTN_LEFT)  g_dbgPage = 0;
+    if (pros::lcd::read_buttons() & LCD_BTN_RIGHT) g_dbgPage = 1;
+
+    // ------------------------
+    // Unified Debug (1 tick, 2 pages, bad-state latch)
+    // ------------------------
+    bool bad = false;
+    if (!std::isfinite(odomTheta) || !std::isfinite(fNow) || !std::isfinite(rNow)) bad = true;
+    if (!std::isfinite(fErr) || !std::isfinite(rErr)) bad = true;
+    if (std::hypot(fErr, rErr) > 144.0) bad = true;      // >12ft error
+    if (closestDist > 48.0) bad = true;                  // far from path = wrong anchor/odom
+
+    if (bad) g_badLatchUntil = pros::millis() + 1500;    // show BAD for 1.5s
+    const bool showBad = (pros::millis() < g_badLatchUntil);
+
+    if (dbgTick(120)) {
+      const double ptMaxRaw = hasPtSpeed ? std::fabs(la.speed) : NAN;
+
+      const char* reason = "NORMAL";
+      if (g_cancel) reason = "CANCEL";
+      else if (elapsed < 300) reason = "START_NO_TURN";
+      else if (distToEnd < cfg.endDistIn && headOk) reason = "END_SETTLE";
+      else if (distToEnd < cfg.endDistIn) reason = "END_ZONE";
+      else if (laIsLast) reason = "LA_LAST";
+
+      int page = g_dbgPage;
+      if (showBad) page = 99;
+
+      if (page == 99) {
+        pros::lcd::print(0, "!!! BAD STATE !!! (%s)", reason);
+        pros::lcd::print(1, "Pose f%.1f r%.1f h%.1f", fNow, rNow, headingDeg);
+        pros::lcd::print(2, "ErrF f%.1f r%.1f end%.1f", fErr, rErr, distToEnd);
+        pros::lcd::print(3, "idx %d cd%.1f LA(%.1f,%.1f)", (int)idx, closestDist, la.x, la.y);
+        pros::lcd::print(4, "Head %.1f->%.1f e%.1f", headingDeg, headingTarget, tErr);
+        pros::lcd::print(5, "maxSp%.0f endS%.2f turnS%.2f", maxSp, endScale, turnScale);
+        pros::lcd::print(6, "raw f%.0f r%.0f t%.0f", fRaw, rRaw, tRaw);
+        pros::lcd::print(7, "mot FL%.0f FR%.0f BL%.0f BR%.0f", fl, fr, bl, br);
+      }
+      else if (page == 0) {
+        pros::lcd::print(0, "%s idx:%d/%d t:%dms %s",
+                         headingModeStr(headingMode),
+                         (int)idx, (int)path.pts.size(),
+                         elapsed, reason);
+
+        pros::lcd::print(1, "Pose f%.1f r%.1f h%.1f", fNow, rNow, headingDeg);
+
+        pros::lcd::print(2, "LA f%.1f r%.1f end%.2f cd%.2f",
+                         la.x, la.y, distToEnd, closestDist);
+
+        pros::lcd::print(3, "ErrF f%.1f r%.1f | ErrR f%.1f r%.1f",
+                         fErr, rErr, robotForward, robotRight);
+
+        pros::lcd::print(4, "Head %.1f->%.1f e%.1f", headingDeg, headingTarget, tErr);
+
+        pros::lcd::print(5, "maxSp%.0f pt%.0f endS%.2f",
+                         maxSp,
+                         std::isfinite(ptMaxRaw) ? ptMaxRaw : -1.0,
+                         endScale);
+
+        pros::lcd::print(6, "Out f%.0f r%.0f t%.0f mv%.1f",
+                         fOut, rOut, tOut, moveMag);
+
+        pros::lcd::print(7, "M FL%.0f FR%.0f BL%.0f BR%.0f",
+                         fl, fr, bl, br);
+      }
+      else {
+        pros::lcd::print(0, "DEEP %s t:%dms", headingModeStr(headingMode), elapsed);
+        pros::lcd::print(1, "hold%.1f final%.1f", holdHeadingDeg, finalHeadingDeg);
+        pros::lcd::print(2, "ptMax%.0f use:%d", std::isfinite(ptMaxRaw) ? ptMaxRaw : -1.0, (int)cfg.usePointSpeed);
+        pros::lcd::print(3, "turnS%.2f mv%.1f", turnScale, moveMag);
+        pros::lcd::print(4, "raw f%.0f r%.0f t%.0f", fRaw, rRaw, tRaw);
+        pros::lcd::print(5, "out f%.0f r%.0f t%.0f", fOut, rOut, tOut);
+        pros::lcd::print(6, "settle%d headOk%d", settled, (int)headOk);
+        pros::lcd::print(7, "laLast%d idx%d cd%.1f", (int)laIsLast, (int)idx, closestDist);
+      }
+    }
 
     pros::delay(10);
   }
@@ -224,6 +356,9 @@ static void runFollower(
   stopDriveLocal();
 }
 
+// =============================
+// Public API
+// =============================
 void PathFollower::followPath(
     LoadedPath path,
     HeadingMode headingMode,
@@ -236,9 +371,9 @@ void PathFollower::followPath(
 
 // -------- async --------
 static pros::Task* g_task = nullptr;
-static LoadedPath  g_path;
-static HeadingMode g_mode;
-static double      g_finalHead;
+static LoadedPath   g_path;
+static HeadingMode  g_mode;
+static double       g_finalHead;
 static FollowConfig g_cfg;
 
 static void taskFn(void*) {
@@ -267,6 +402,7 @@ void PathFollower::followPathAsync(
 
 bool PathFollower::isFollowing() { return g_running; }
 void PathFollower::cancel() { g_cancel = true; }
+
 void PathFollower::waitUntilDone(int timeout_ms) {
   int start = pros::millis();
   while (g_running && (pros::millis() - start < timeout_ms)) pros::delay(10);
