@@ -1,7 +1,7 @@
 #pragma once
 #include "XDrive_PID.hpp"
 
-void followPathAsync(const char* filename,
+void followPathAsync(const char* filenameOrAsset,
                      HeadingMode headingMode = HeadingMode::FACE_TARGET,
                      double finalHeadingDeg = 0.0);
 

@@ -1,21 +1,20 @@
 #pragma once
-#include "pros/rtos.hpp"
 
-// Global odom pose (field coordinates)
-// Convention used by your DriveToPoint_OdomPID:
-//  - odomX: +right (inches)
-//  - odomY: +forward/upfield (inches)
-//  - odomTheta: radians, 0 means facing +Y, CCW positive
+// Field pose (inches, radians)
+// Requested VEX Gaming Positioning System mapping:
+//   odomX = forward / up-field axis
+//   odomY = right   / across-field axis
+// Heading:
+//   odomTheta radians, 0 points along +odomX, positive towards +odomY.
 extern double odomX;
 extern double odomY;
 extern double odomTheta;
 
-// Odom functions
 void updateOdom();
-void resetOdom(); // resets to (0,0,0)
+void resetOdom();                 // resets to (0,0,0)
 void printOdom();
 
-// NEW: reset to a specific pose
+// Reset to a specific pose (degrees or radians)
 void resetOdomPose(double x_in, double y_in, double thetaDeg);
 void resetOdomPoseRad(double x_in, double y_in, double thetaRad);
 

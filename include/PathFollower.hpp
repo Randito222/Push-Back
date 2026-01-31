@@ -26,9 +26,9 @@ struct FollowConfig {
   // Path speed column behavior
   bool usePointSpeed = true;
 
-  // Unit conversion + anchoring
-  bool   assumeMillimeters = true; // your file numbers like 162.291 strongly suggest mm
-  bool   anchorToRobotPose = true; // normalize so first point starts at current odom pose
+  // Anchoring
+  // If true: treats the file’s first point as (0,0) and places it at current odom pose.
+  bool anchorToRobotPose = true;
 };
 
 namespace PathFollower {

@@ -2,70 +2,79 @@
 #include "PathPlanner.hpp"
 #include "PathFollower.hpp"
 #include "main.h"
+#include <string>
+#include <cstring>
 
-static pros::Task* pathTask = nullptr;
-static volatile bool running = false;
-static volatile bool cancelReq = false;
+// Same helpers as AutoPath.cpp (kept local to avoid extra shared headers)
+static bool looksLikeAssetBuffer(const char* s) {
+  if (!s) return false;
+  for (int i = 0; i < 256 && s[i]; i++) {
+    if (s[i] == '\n') return true;
+    if (s[i] == ',')  return true;
+    if (s[i] == '#')  return true;
+  }
+  return false;
+}
 
-static LoadedPath loaded;
-static HeadingMode mode;
-static double finalHead;
+static const char* resolveSource(const char* filenameOrAsset, std::string& tmp) {
+  if (!filenameOrAsset) return filenameOrAsset;
+  if (looksLikeAssetBuffer(filenameOrAsset)) return filenameOrAsset;
 
-static FollowConfig cfgDefault() {
+  std::string f(filenameOrAsset);
+  if (f.find('/') != std::string::npos) {
+    tmp = f;
+    return tmp.c_str();
+  }
+
+  tmp = "/usd/" + f;
+  return tmp.c_str();
+}
+
+static FollowConfig defaults() {
   FollowConfig cfg;
-  cfg.lookaheadIn = 10;
-  cfg.maxSpeed = 110;
-  cfg.timeout_ms = 6000;
-  cfg.slewRateV = 8;
-  cfg.kP_xy = 8; cfg.kI_xy = 0; cfg.kD_xy = 25;
-  cfg.kP_turn = 2.5; cfg.kI_turn = 0; cfg.kD_turn = 14;
-  cfg.endDistIn = 0.8;
-  cfg.endHeadDeg = 2.0;
+  cfg.lookaheadIn = 7.0;     // tighter path lock
+  cfg.maxSpeed    = 90;      // reduce overshoot
+  cfg.slewRateV   = 5;       // smoother corrections
+
+  cfg.kP_xy = 9.0;
+  cfg.kI_xy = 0.0;
+  cfg.kD_xy = 30.0;
+
+  cfg.kP_turn = 2.0;
+  cfg.kI_turn = 0.0;
+  cfg.kD_turn = 10.0;
+
+  cfg.endDistIn = 0.6;
   cfg.usePointSpeed = true;
+  cfg.anchorToRobotPose = true;
   return cfg;
 }
 
-// Optional: to support cancel, your PathFollower loop should check cancelReq.
-// If you want, I’ll show the 2-line change to PathFollower to stop early.
+void followPathAsync(const char* filenameOrAsset, HeadingMode headingMode, double finalHeadingDeg) {
+  std::string tmp;
+  const char* src = resolveSource(filenameOrAsset, tmp);
 
-static void taskFn(void*) {
-  running = true;
-  cancelReq = false;
-
-  FollowConfig cfg = cfgDefault();
-  // NOTE: Add a cancel check inside PathFollower if you want true cancel support
-  PathFollower::followPath(loaded, mode, finalHead, cfg);
-
-  running = false;
-}
-
-void followPathAsync(const char* filename, HeadingMode headingMode, double finalHeadingDeg) {
-  if (running) return; // or cancel+restart if you prefer
-
-  loaded = PathPlanner::loadFromFile(filename);
+  auto loaded = PathPlanner::loadJerry(src);
   if (!loaded.ok) {
     pros::lcd::print(0, "PATH LOAD FAIL");
     pros::lcd::print(1, "%s", loaded.err.c_str());
+    pros::lcd::print(2, "%s", looksLikeAssetBuffer(filenameOrAsset) ? "(ASSET buffer)" : src);
+    pros::lcd::print(3, "pts=%d", (int)loaded.pts.size());
     return;
   }
 
-  mode = headingMode;
-  finalHead = finalHeadingDeg;
-
-  if (pathTask) { delete pathTask; pathTask = nullptr; }
-  pathTask = new pros::Task(taskFn, nullptr, "PathFollow");
+  FollowConfig cfg = defaults();
+  PathFollower::followPathAsync(loaded, headingMode, finalHeadingDeg, cfg);
 }
 
-bool isPathFollowing() { return running; }
+bool isPathFollowing() {
+  return PathFollower::isFollowing();
+}
 
 void waitPathDone(int timeout_ms) {
-  int start = pros::millis();
-  while (running && (pros::millis() - start < timeout_ms)) {
-    pros::delay(10);
-  }
+  PathFollower::waitUntilDone(timeout_ms);
 }
 
 void cancelPath() {
-  cancelReq = true;
-  // If you add cancel checks inside PathFollower, it will stop quickly.
+  PathFollower::cancel();
 }

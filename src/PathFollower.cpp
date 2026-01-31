@@ -6,7 +6,10 @@
 #include <cmath>
 #include <algorithm>
 
-// If you already have these utilities globally, you can remove these and use yours.
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 static double clampd(double v, double lo, double hi) {
   return (v < lo) ? lo : (v > hi) ? hi : v;
 }
@@ -39,20 +42,6 @@ static double MyslewLocal(double target, double current, double step) {
   return current + (diff > 0 ? step : -step);
 }
 
-struct PID {
-  double kP=0,kI=0,kD=0;
-  double i=0, prev=0;
-  double iLimit=1000;
-  double step(double e) {
-    i += e;
-    i = clampd(i, -iLimit, iLimit);
-    double d = e - prev;
-    prev = e;
-    return kP*e + kI*i + kD*d;
-  }
-  void reset() { i=0; prev=0; }
-};
-
 // Closest-point search (incremental)
 static size_t closestIndex(const std::vector<PathPoint>& pts, double x, double y, size_t startIdx) {
   size_t best = startIdx;
@@ -77,25 +66,20 @@ static PathPoint lookaheadPoint(const std::vector<PathPoint>& pts, double x, dou
 }
 
 static void normalizeJerry(LoadedPath& path, const FollowConfig& cfg) {
-  // Convert mm->in if requested
-  const double MM_TO_IN = 1.0 / 25.4;
-  const double scale = cfg.assumeMillimeters ? MM_TO_IN : 1.0;
+  if (path.pts.size() < 2) return;
 
-  // If anchoring, shift so first point is (0,0) and then add current odom pose
   const double x0 = path.pts.front().x;
   const double y0 = path.pts.front().y;
 
-  for (auto &p : path.pts) {
-    double localX = (p.x - x0) * scale;
-    double localY = (p.y - y0) * scale;
+  for (auto& p : path.pts) {
+    const double localX = p.x - x0;
+    const double localY = p.y - y0;
 
     if (cfg.anchorToRobotPose) {
+      // Place the entire path onto the field at the robot's current odom pose
+      // (odomX = forward, odomY = right)
       p.x = odomX + localX;
       p.y = odomY + localY;
-    } else {
-      // Just unit-convert
-      p.x = p.x * scale;
-      p.y = p.y * scale;
     }
   }
 }
@@ -114,13 +98,12 @@ static void runFollower(
 ) {
   if (!path.ok || path.pts.size() < 2) return;
 
-  // Normalize/anchor path.jerryio export to your odom frame
   normalizeJerry(path, cfg);
 
-  PIDTest xPID{cfg.kP_xy, cfg.kI_xy, cfg.kD_xy};
-  PIDTest yPID{cfg.kP_xy, cfg.kI_xy, cfg.kD_xy};
+  PIDTest fPID{cfg.kP_xy, cfg.kI_xy, cfg.kD_xy}; // forward axis PID
+  PIDTest rPID{cfg.kP_xy, cfg.kI_xy, cfg.kD_xy}; // right axis PID
   PIDTest tPID{cfg.kP_turn, cfg.kI_turn, cfg.kD_turn};
-  xPID.reset(); yPID.reset(); tPID.reset();
+  fPID.reset(); rPID.reset(); tPID.reset();
 
   const double holdHeadingDeg = odomTheta * 180.0 / M_PI;
 
@@ -132,27 +115,31 @@ static void runFollower(
   while (pros::millis() - start < cfg.timeout_ms) {
     if (g_cancel) break;
 
-    idx = closestIndex(path.pts, odomX, odomY, idx);
-    PathPoint la = lookaheadPoint(path.pts, odomX, odomY, idx, cfg.lookaheadIn);
+    // Current pose in VEX GPS axes
+    const double fNow = odomX;
+    const double rNow = odomY;
 
-    // Error to lookahead in FIELD frame
-    double xErr = la.x - odomX;
-    double yErr = la.y - odomY;
+    idx = closestIndex(path.pts, fNow, rNow, idx);
+    PathPoint la = lookaheadPoint(path.pts, fNow, rNow, idx, cfg.lookaheadIn);
+
+    // Error to lookahead in FIELD frame (VEX GPS axes)
+    const double fErr = la.x - fNow; // forward error
+    const double rErr = la.y - rNow; // right error
 
     // End distance to final point
-    double endDx = path.pts.back().x - odomX;
-    double endDy = path.pts.back().y - odomY;
-    double distToEnd = std::hypot(endDx, endDy);
+    const double endDf = path.pts.back().x - fNow;
+    const double endDr = path.pts.back().y - rNow;
+    const double distToEnd = std::hypot(endDf, endDr);
 
-    // Heading target
+    // Heading target (0 deg points along +odomX, positive towards +odomY)
     double headingDeg = odomTheta * 180.0 / M_PI;
     double headingTarget = finalHeadingDeg;
 
     if (headingMode == HeadingMode::HOLD) {
       headingTarget = holdHeadingDeg;
     } else if (headingMode == HeadingMode::FACE_TARGET) {
-      // 0° = +Y in your convention => atan2(x, y)
-      headingTarget = std::atan2(xErr, yErr) * 180.0 / M_PI;
+      // 0° = +forward => atan2(right, forward)
+      headingTarget = std::atan2(rErr, fErr) * 180.0 / M_PI;
     } else {
       headingTarget = finalHeadingDeg;
     }
@@ -166,41 +153,52 @@ static void runFollower(
       if (settled > 200) break;
     } else settled = 0;
 
-    // FIELD -> ROBOT transform (same as your DriveToPoint_OdomPID)
-    double sinH = std::sin(odomTheta);
-    double cosH = std::cos(odomTheta);
-    double robotX =  xErr * cosH + yErr * sinH;   // strafe
-    double robotY = -xErr * sinH + yErr * cosH;   // forward
+    // FIELD -> ROBOT transform (with field axes: forward=fErr, right=rErr)
+    const double sinH = std::sin(odomTheta);
+    const double cosH = std::cos(odomTheta);
 
-    // Speed scaling
-    double vScale = 1.0;
+    // Robot frame:
+    //   robotForward =  fErr*cos + rErr*sin
+    //   robotRight   = -fErr*sin + rErr*cos
+    const double robotForward =  fErr * cosH + rErr * sinH;
+    const double robotRight   = -fErr * sinH + rErr * cosH;
+
+    // Speed limiting
+    double maxSp = cfg.maxSpeed;
     if (cfg.usePointSpeed && std::isfinite(la.speed)) {
-      // Your file speed looks like 0..600 (editor units). We clamp and map it.
-      // If you prefer, you can set usePointSpeed=false.
-      vScale = clampd(la.speed / 600.0, 0.25, 1.0);
+      double ptMax = clampd(std::fabs(la.speed), 10.0, cfg.maxSpeed);
+      maxSp = std::min(maxSp, ptMax);
     }
-
-    // Slow down near end
     double endScale = clampd(distToEnd / 18.0, 0.25, 1.0);
-    double maxSp = cfg.maxSpeed * vScale * endScale;
+    maxSp *= endScale;
 
-    double xOut = clampd(xPID.step(robotX), -maxSp, maxSp);
-    double yOut = clampd(yPID.step(robotY), -maxSp, maxSp);
+    // PID outputs in robot frame
+    double fOut = clampd(fPID.step(robotForward), -maxSp, maxSp);
+    double rOut = clampd(rPID.step(robotRight),   -maxSp, maxSp);
 
-    double moveMag = std::hypot(robotX, robotY);
+    // Turn scaling while moving
+    double moveMag = std::hypot(robotForward, robotRight);
     double turnScale = clampd(1.0 - (moveMag / 24.0), 0.25, 1.0);
     double tOut = clampd(tPID.step(tErr) * turnScale, -maxSp, maxSp);
 
-    // X-drive mix
+    // Optional: suppress turning briefly at start to prevent initial spin
+    int elapsed = pros::millis() - start;
+    if (elapsed < 300) tOut = 0;
+
+    // X-drive mix:
+    // yOut = forward, xOut = right/strafe
+    const double yOut = fOut;
+    const double xOut = rOut;
+
     double tFL = yOut + xOut + tOut;
     double tFR = yOut - xOut - tOut;
     double tBL = yOut - xOut + tOut;
     double tBR = yOut + xOut - tOut;
 
-    // Normalize
-    double maxMag = std::max({std::fabs(tFL), std::fabs(tFR), std::fabs(tBL), std::fabs(tBR)});
-    if (maxMag > maxSp) {
-      double s = maxSp / maxMag;
+    // Normalize to maxSp
+    double m = std::max({std::fabs(tFL), std::fabs(tFR), std::fabs(tBL), std::fabs(tBR)});
+    if (m > maxSp && m > 1e-6) {
+      double s = maxSp / m;
       tFL *= s; tFR *= s; tBL *= s; tBR *= s;
     }
 
@@ -217,7 +215,7 @@ static void runFollower(
 
     // Debug
     pros::lcd::print(2, "idx:%d end:%.1f la(%.1f,%.1f)", (int)idx, distToEnd, la.x, la.y);
-    pros::lcd::print(3, "errF x%.1f y%.1f | errR rx%.1f ry%.1f", xErr, yErr, robotX, robotY);
+    pros::lcd::print(3, "errF f%.1f r%.1f | errR rf%.1f rr%.1f", fErr, rErr, robotForward, robotRight);
     pros::lcd::print(4, "head %.1f targ %.1f tErr %.1f", headingDeg, headingTarget, tErr);
 
     pros::delay(10);
@@ -256,7 +254,7 @@ void PathFollower::followPathAsync(
     double finalHeadingDeg,
     const FollowConfig& cfg
 ) {
-  if (g_running) return; // or cancel+restart if you want
+  if (g_running) return;
 
   g_path = path;
   g_mode = headingMode;
@@ -268,9 +266,7 @@ void PathFollower::followPathAsync(
 }
 
 bool PathFollower::isFollowing() { return g_running; }
-
 void PathFollower::cancel() { g_cancel = true; }
-
 void PathFollower::waitUntilDone(int timeout_ms) {
   int start = pros::millis();
   while (g_running && (pros::millis() - start < timeout_ms)) pros::delay(10);

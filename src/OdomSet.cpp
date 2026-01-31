@@ -3,6 +3,10 @@
 #include "pros/apix.h"
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // =============================
 // Wheel geometry
 // =============================
@@ -12,8 +16,8 @@ constexpr double HORZ_DIAM_IN = 2.00;
 // =============================
 // ODOM OFFSETS
 // =============================
-constexpr double TRACK_WIDTH_IN = 6.0;   // CHANGE THIS (inches, center-to-center)
-constexpr double H_OFFSET_IN    = -3.0;  // CHANGE THIS (inches, +front / -back)
+constexpr double TRACK_WIDTH_IN = 6.0;   // inches, center-to-center (kept for future use)
+constexpr double H_OFFSET_IN    = -3.0;  // inches, +front / -back
 
 // =============================
 constexpr double DEG2RAD = M_PI / 180.0;
@@ -21,6 +25,9 @@ constexpr double RAD2DEG = 180.0 / M_PI;
 
 // =============================
 // Odom State (global)
+// Requested mapping:
+//   odomX = forward/upfield
+//   odomY = right
 // =============================
 double odomX = 0.0;
 double odomY = 0.0;
@@ -64,6 +71,8 @@ void updateOdom() {
   const double vrNow = rotCdegToInches( RVerticalTracker.get_position(), VERT_DIAM_IN);
   const double hNow  = rotCdegToInches( HorizontalTracker.get_position(), HORZ_DIAM_IN);
 
+  // Heading: IMU rotation in degrees -> radians
+  // Convention (requested): odomTheta=0 means facing +odomX (forward/upfield axis)
   const double heading = IMU.get_rotation() * DEG2RAD;
   if (!std::isfinite(heading)) return;
 
@@ -81,17 +90,24 @@ void updateOdom() {
   lastHeading = heading;
 
   // Robot-relative deltas
-  const double dY_robot = (dVL + dVR) * 0.5;
-  const double dX_robot = dH - (dTheta * H_OFFSET_IN);
+  // robotForward is along the robot's forward axis
+  // robotRight is along the robot's right/strafe axis (horizontal tracker)
+  const double dForward_robot = (dVL + dVR) * 0.5;
+  const double dRight_robot   = dH - (dTheta * H_OFFSET_IN);
 
   // Robot -> Field transform using mid-heading
   const double midHeading = heading - (dTheta * 0.5);
   const double sinH = std::sin(midHeading);
   const double cosH = std::cos(midHeading);
 
-  // Convention: heading=0 means facing +Y, so this matches your drive code
-  odomX += dX_robot * cosH - dY_robot * sinH;
-  odomY += dX_robot * sinH + dY_robot * cosH;
+  // Field axes mapping (requested):
+  //   odomX = fieldForward
+  //   odomY = fieldRight
+  const double dFieldForward = dForward_robot * cosH - dRight_robot * sinH;
+  const double dFieldRight   = dForward_robot * sinH + dRight_robot * cosH;
+
+  odomX += dFieldForward;
+  odomY += dFieldRight;
 
   odomTheta = heading;
 }
@@ -131,8 +147,8 @@ void resetOdom() {
 // Print
 // =============================
 void printOdom() {
-  pros::lcd::print(0, "X: %.2f", odomX);
-  pros::lcd::print(1, "Y: %.2f", odomY);
+  pros::lcd::print(0, "X(fwd): %.2f", odomX);
+  pros::lcd::print(1, "Y(rgt): %.2f", odomY);
   pros::lcd::print(2, "H: %.1f deg", odomTheta * RAD2DEG);
 }
 

@@ -60,10 +60,10 @@ void initialize() {
   // Configure your chassis controls
   chassis.opcontrol_curve_buttons_toggle(true);   // Enables modifying the controller curve with buttons on the joysticks
   chassis.opcontrol_drive_activebrake_set(0.0);   // Sets the active brake kP. We recommend ~2.  0 will disable.
-  chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
+  //chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
 
   resetOdom();
-  pros::Task odom_task(odomTask);
+  static pros::Task odom_task(odomTask);
 
   // Set the drive to your own constants from autons.cpp!
   default_constants();
@@ -74,7 +74,7 @@ void initialize() {
 
 // Autonomous Selector using LLEMU
 ez::as::auton_selector.autons_add({
-  //{"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+  {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
   {"Right Side\n\n This auton grabs 3 blocks on the right side and scores them.", RightSideAuton},
   {"Off Park\n\n This auton gets the robot off the park if alliance has full awp.", OffParkAuton},
   {"Skills\n\n This is skills", Skills},

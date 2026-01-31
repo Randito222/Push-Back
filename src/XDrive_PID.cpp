@@ -5,6 +5,10 @@
 #include <cmath>
 #include <algorithm>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // =============================
 // Motor aliases
 // =============================
@@ -17,66 +21,21 @@
 #define BR1 Back_Right_1
 #define BR2 Back_Right_2
 
-// =============================
-// Constants
-// =============================
-constexpr double WHEEL_DIAM_IN = 3.25;
-constexpr double GEAR_RATIO   = 1.0;
-constexpr double PI = 3.141592653589793;
+static constexpr double RAD2DEG = 180.0 / M_PI;
 
 // =============================
-// Utility
+// Utility Helpers (match header)
 // =============================
 double clamp(double v, double lo, double hi) {
   return (v < lo) ? lo : (v > hi) ? hi : v;
 }
 
-double Myslew(double target, double current, double step) {
+double Myslew(double target, double current, double maxDelta) {
   double diff = target - current;
-  if (std::fabs(diff) <= step) return target;
-  return current + (diff > 0 ? step : -step);
+  if (std::fabs(diff) <= maxDelta) return target;
+  return current + (diff > 0 ? maxDelta : -maxDelta);
 }
 
-
-
-// =============================
-// Encoder helpers (legacy DriveToPoint_PID)
-// =============================
-static double degToIn(double deg) {
-  return (deg / 360.0) * PI * WHEEL_DIAM_IN / GEAR_RATIO;
-}
-
-static double avg(double a, double b) { return (a + b) * 0.5; }
-
-static double flDeg() { return avg(FL1.get_position(), FL2.get_position()); }
-static double frDeg() { return avg(FR1.get_position(), FR2.get_position()); }
-static double blDeg() { return avg(BL1.get_position(), BL2.get_position()); }
-static double brDeg() { return avg(BR1.get_position(), BR2.get_position()); }
-
-static double xPos() {
-  return degToIn((flDeg() - frDeg() - blDeg() + brDeg()) / 4.0);
-}
-
-static double yPos() {
-  return degToIn((flDeg() + frDeg() + blDeg() + brDeg()) / 4.0);
-}
-
-// =============================
-// IMU helpers (legacy DriveToPoint_PID)
-// =============================
-static double wrapDeg(double deg) {
-  while (deg > 180) deg -= 360;
-  while (deg < -180) deg += 360;
-  return deg;
-}
-
-static double imuHeading() {
-  return wrapDeg(IMU.get_rotation());
-}
-
-// =============================
-// Stop
-// =============================
 void stopDrive() {
   FL1.move(0); FL2.move(0);
   FR1.move(0); FR2.move(0);
@@ -84,206 +43,130 @@ void stopDrive() {
   BR1.move(0); BR2.move(0);
 }
 
-// =============================
-// Legacy encoder-only point drive
-// =============================
+static double wrapDeg(double deg) {
+  while (deg > 180) deg -= 360;
+  while (deg < -180) deg += 360;
+  return deg;
+}
+
+// =============================================
+// Encoder-only pseudo drive (fallback)
+// =============================================
 void DriveToPoint_PID(
-    double targetX,
-    double targetY,
-    double targetHeading,
+    double targetX_in,
+    double targetY_in,
+    double targetHeading_deg,
     int    maxSpeed,
     int    timeout_ms,
     double slewRateV
 ) {
-  FL1.tare_position(); FL2.tare_position();
-  FR1.tare_position(); FR2.tare_position();
-  BL1.tare_position(); BL2.tare_position();
-  BR1.tare_position(); BR2.tare_position();
-
-  PIDTest xPID {10.0, 0.02, 40.0};
-  PIDTest yPID {10.0, 0.02, 40.0};
-  PIDTest turnPID {3.0, 0.01, 24.0};
-
-  double fl = 0, fr = 0, bl = 0, br = 0;
-  int settled = 0;
-  int start = pros::millis();
-
-  while (pros::millis() - start < timeout_ms) {
-    double xErr = targetX - xPos();
-    double yErr = targetY - yPos();
-    double tErr = wrapDeg(targetHeading - imuHeading());
-
-    if (std::fabs(xErr) < 0.5 &&
-        std::fabs(yErr) < 0.5 &&
-        std::fabs(tErr) < 1.0) {
-      settled += 10;
-      if (settled > 200) break;
-    } else settled = 0;
-
-    double xOut = clamp(xPID.step(xErr), -maxSpeed, maxSpeed);
-    double yOut = clamp(yPID.step(yErr), -maxSpeed, maxSpeed);
-    double tOut = clamp(turnPID.step(tErr), -maxSpeed, maxSpeed);
-
-    double tFL = yOut + xOut + tOut;
-    double tFR = yOut - xOut - tOut;
-    double tBL = yOut - xOut + tOut;
-    double tBR = yOut + xOut - tOut;
-
-    fl = Myslew(tFL, fl, slewRateV);
-    fr = Myslew(tFR, fr, slewRateV);
-    bl = Myslew(tBL, bl, slewRateV);
-    br = Myslew(tBR, br, slewRateV);
-
-    FL1.move(fl); FL2.move(fl);
-    FR1.move(fr); FR2.move(fr);
-    BL1.move(bl); BL2.move(bl);
-    BR1.move(br); BR2.move(br);
-
-    pros::delay(10);
-  }
-
-  stopDrive();
+  DriveToPoint_OdomPID(targetX_in, targetY_in, targetHeading_deg,
+                       HeadingMode::ABSOLUTE, maxSpeed, timeout_ms, slewRateV);
 }
 
-// =============================
-// Field-centric odom point drive
-// =============================
+// =============================================
+// X-Drive Odometry PID (field-centric)
+// Axis mapping requested:
+//   targetX_in / odomX = forward/upfield
+//   targetY_in / odomY = right
+// Heading:
+//   0 deg points along +X (forward), positive towards +Y (right)
+// =============================================
 void DriveToPoint_OdomPID(
-    double targetX,
-    double targetY,
-    double targetHeadingDeg,
+    double targetX_in,
+    double targetY_in,
+    double targetHeading_deg,
     HeadingMode headingMode,
     int    maxSpeed,
     int    timeout_ms,
     double slewRateV
 ) {
-  PIDTest xPID    {10.0, 0.008, 30.0};
-  PIDTest yPID    {10.0, 0.008, 30.0};
-  PIDTest turnPID { 3.0, 0.00, 18.0};
+  PIDTest fPID {10.0, 0.05, 30.0};   // forward
+  PIDTest rPID {0.0,  0.0,  0.0};    // right (tune if needed)
+  PIDTest turnPID {0.0, 0.0, 0.0};
 
-  xPID.reset();
-  yPID.reset();
+  fPID.reset();
+  rPID.reset();
   turnPID.reset();
 
   const double MIN_XY   = 8.0;
   const double MIN_TURN = 6.0;
 
-  const double XY_ERR_GATE   = 0.6;
-  const double TURN_ERR_GATE = 2.0;
-
-  auto applyMin = [&](double out, double minv) -> double {
-    if (std::fabs(out) < 1e-6) return 0.0;
-    if (std::fabs(out) < minv) return (out > 0) ? minv : -minv;
-    return out;
+  auto applyMin = [&](double v, double minv) -> double {
+    if (std::fabs(v) < 1e-6) return 0.0;
+    if (std::fabs(v) < minv) return (v > 0 ? minv : -minv);
+    return v;
   };
 
-  auto applyMinWithErrGate = [&](double out, double err, double minv, double gate) -> double {
-    if (std::fabs(err) < gate) return 0.0;
-    return applyMin(out, minv);
-  };
+  const double holdHeading = odomTheta * RAD2DEG;
 
-  double fl = 0, fr = 0, bl = 0, br = 0;
-  int settled = 0;
+  double fl=0, fr=0, bl=0, br=0;
   int start = pros::millis();
-
-  // For HOLD mode
-  const double holdHeadingDeg = odomTheta * 180.0 / PI;
+  int settled = 0;
 
   while (pros::millis() - start < timeout_ms) {
+    // Field error in VEX GPS axes
+    const double fErrF = targetX_in - odomX; // forward
+    const double rErrF = targetY_in - odomY; // right
+    const double dist  = std::hypot(fErrF, rErrF);
 
-    // =============================
-    // FIELD ERRORS (inches)
-    // =============================
-    const double xErr = targetX - odomX;
-    const double yErr = targetY - odomY;
-    const double distErr = std::hypot(xErr, yErr);
+    const double headingDeg = odomTheta * RAD2DEG;
 
-    // =============================
-    // Heading target (based on mode)
-    // =============================
-    const double headingDeg = odomTheta * 180.0 / PI;
-    double headingTargetDeg = targetHeadingDeg;
-
+    // Heading target
+    double headingTarget = targetHeading_deg;
     if (headingMode == HeadingMode::HOLD) {
-      headingTargetDeg = holdHeadingDeg;
+      headingTarget = holdHeading;
     } else if (headingMode == HeadingMode::FACE_TARGET) {
-      // 0deg means +Y, so use atan2(x, y)
-      headingTargetDeg = std::atan2(xErr, yErr) * 180.0 / PI;
+      // 0° = +forward => atan2(right, forward)
+      headingTarget = std::atan2(rErrF, fErrF) * RAD2DEG;
     }
 
-    double tErr = headingTargetDeg - headingDeg;
-    while (tErr > 180) tErr -= 360;
-    while (tErr < -180) tErr += 360;
-    if (std::fabs(tErr) < 1.0) tErr = 0.0;
+    const double tErr = wrapDeg(headingTarget - headingDeg);
 
-    // =============================
-    // SETTLE CHECK
-    // =============================
-    if (distErr < 0.5 && std::fabs(tErr) < 0.7) {
+    if (dist < 1.0 && std::fabs(tErr) < 2.0) {
       settled += 10;
       if (settled > 200) break;
-    } else {
-      settled = 0;
-    }
+    } else settled = 0;
 
-    // =============================
-    // FIELD -> ROBOT transform
-    // robotX = strafe error, robotY = forward error
-    // =============================
+    // Field -> Robot transform (forward/right axes)
     const double sinH = std::sin(odomTheta);
     const double cosH = std::cos(odomTheta);
 
-    const double robotX =  xErr * cosH + yErr * sinH;
-    const double robotY = -xErr * sinH + yErr * cosH;
+    const double robotForward =  fErrF * cosH + rErrF * sinH;
+    const double robotRight   = -fErrF * sinH + rErrF * cosH;
 
-    // =============================
-    // PID outputs (robot frame)
-    // =============================
-    double xOut = clamp(xPID.step(robotX), -maxSpeed, maxSpeed);
-    double yOut = clamp(yPID.step(robotY), -maxSpeed, maxSpeed);
+    double fOut = fPID.step(robotForward);
+    double rOut = rPID.step(robotRight);
+    double tOut = turnPID.step(tErr);
 
-    double turnScale = clamp(1.0 - (distErr / 24.0), 0.25, 1.0);
-    double tOut = clamp(turnPID.step(tErr) * turnScale, -maxSpeed, maxSpeed);
+    fOut = applyMin(clamp(fOut, -maxSpeed, maxSpeed), MIN_XY);
+    rOut = applyMin(clamp(rOut, -maxSpeed, maxSpeed), MIN_XY);
+    tOut = applyMin(clamp(tOut, -maxSpeed, maxSpeed), MIN_TURN);
 
-    // =============================
-    // Minimum output with gating
-    // =============================
-    xOut = applyMinWithErrGate(xOut, robotX, MIN_XY, XY_ERR_GATE);
-    yOut = applyMinWithErrGate(yOut, robotY, MIN_XY, XY_ERR_GATE);
-    tOut = applyMinWithErrGate(tOut, tErr,   MIN_TURN, TURN_ERR_GATE);
+    // Mix (y=forward, x=right)
+    const double yOut = fOut;
+    const double xOut = rOut;
 
-    // =============================
-    // X-DRIVE mixing
-    // =============================
     double tFL = yOut + xOut + tOut;
     double tFR = yOut - xOut - tOut;
     double tBL = yOut - xOut + tOut;
     double tBR = yOut + xOut - tOut;
 
-    // Normalize
-    double maxMag = std::max({ std::fabs(tFL), std::fabs(tFR), std::fabs(tBL), std::fabs(tBR) });
-    if (maxMag > maxSpeed) {
-      double scale = (double)maxSpeed / maxMag;
-      tFL *= scale; tFR *= scale; tBL *= scale; tBR *= scale;
+    double m = std::max({std::fabs(tFL), std::fabs(tFR), std::fabs(tBL), std::fabs(tBR)});
+    if (m > maxSpeed && m > 1e-6) {
+      double s = (double)maxSpeed / m;
+      tFL *= s; tFR *= s; tBL *= s; tBR *= s;
     }
 
-    // Slew
     fl = Myslew(tFL, fl, slewRateV);
     fr = Myslew(tFR, fr, slewRateV);
     bl = Myslew(tBL, bl, slewRateV);
     br = Myslew(tBR, br, slewRateV);
 
-    // Apply
     FL1.move((int)fl); FL2.move((int)fl);
     FR1.move((int)fr); FR2.move((int)fr);
     BL1.move((int)bl); BL2.move((int)bl);
     BR1.move((int)br); BR2.move((int)br);
-
-    // Debug
-    pros::lcd::print(4, "FieldErr x%.1f y%.1f d%.1f", xErr, yErr, distErr);
-    pros::lcd::print(5, "RobotErr rx%.1f ry%.1f", robotX, robotY);
-    pros::lcd::print(6, "Head %.1f targ %.1f tErr %.1f", headingDeg, headingTargetDeg, tErr);
-    pros::lcd::print(7, "Out x%.1f y%.1f t%.1f", xOut, yOut, tOut);
 
     pros::delay(10);
   }

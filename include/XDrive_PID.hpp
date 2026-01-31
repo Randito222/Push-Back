@@ -33,11 +33,8 @@ struct PIDTest {
 };
 
 // =============================
-// Heading Modes (for odom point drive)
+// Heading Modes
 // =============================
-// ABSOLUTE:    turn to targetHeading_deg
-// HOLD:        keep the robot's heading at the moment the function starts
-// FACE_TARGET: turn to face the target point while driving (arrive facing the target direction)
 enum class HeadingMode {
   ABSOLUTE,
   HOLD,
@@ -46,6 +43,7 @@ enum class HeadingMode {
 
 // =============================
 // X-Drive PID (encoder-only pseudo-odom)
+// NOTE: In the provided cpp this is delegated to odom drive for simplicity.
 // =============================
 void DriveToPoint_PID(
     double targetX_in,
@@ -53,7 +51,7 @@ void DriveToPoint_PID(
     double targetHeading_deg,
     int    maxSpeed    = 110,
     int    timeout_ms  = 3000,
-    double slewRateV   = 300
+    double slewRateV   = 8
 );
 
 // =============================
@@ -66,17 +64,17 @@ void DriveToPoint_OdomPID(
     HeadingMode headingMode,
     int    maxSpeed    = 110,
     int    timeout_ms  = 3000,
-    double slewRateV   = 300
+    double slewRateV   = 8
 );
 
-// Backwards-compatible overload (keeps your old calls working):
+// Overload for absolute heading mode
 inline void DriveToPoint_OdomPID(
     double targetX_in,
     double targetY_in,
     double targetHeading_deg,
     int    maxSpeed    = 110,
     int    timeout_ms  = 3000,
-    double slewRateV   = 300
+    double slewRateV   = 8
 ) {
   DriveToPoint_OdomPID(targetX_in, targetY_in, targetHeading_deg,
                        HeadingMode::ABSOLUTE, maxSpeed, timeout_ms, slewRateV);

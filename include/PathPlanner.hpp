@@ -3,9 +3,9 @@
 #include <string>
 
 struct PathPoint {
-  double x;          // raw from file (likely mm)
-  double y;          // raw from file (likely mm)
-  double speed;      // raw speed hint
+  double x;          // position units from file (commonly inches in LemLib exports)
+  double y;          // position units from file
+  double speed;      // speed hint (often 0..127-ish)
   double headingDeg; // optional; NaN if missing
 };
 
@@ -16,7 +16,8 @@ struct LoadedPath {
 };
 
 namespace PathPlanner {
-  // Reads path.jerryio format:
-  // waits for "#PATH-POINTS-START", then reads CSV rows until EOF / end marker / JSON section
-  LoadedPath loadJerry(const char* filepath);
+  // Supports BOTH:
+  //  1) "/usd/whatever.txt"  (SD card file)
+  //  2) ASSET(myPath_txt)    (embedded /static file contents)
+  LoadedPath loadJerry(const char* filepathOrAsset);
 }

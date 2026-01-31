@@ -11,7 +11,7 @@
 
 extern Drive chassis;
 
-// Your motors, sensors, etc. should go here.  Below are examples
+// Your motors, sensors, etc. should go here.  
 
 /**
 Motors for robot
@@ -28,8 +28,7 @@ inline pros::Motor Back_Right_2(-20);  // Top Back Right motor
 
 inline pros::Motor FrontIntake(1); // Intake motor
 inline pros::Motor Arm(10); // Arm motor
-inline pros::Motor MiddleIntake(0);
-inline pros::Motor TopIntake(0);
+
 /**
 Motor groups for robot
 */
@@ -52,8 +51,6 @@ inline pros::Rotation LVerticalTracker(15); // Left Horizontal tracking wheel on
 inline pros::Rotation RVerticalTracker(9); // Right Horizontal tracking wheel on port 9
 inline pros::Rotation HorizontalTracker(16); // Vertical tracking wheel on port 16
 
-// inline pros::Motor intake(1);
-// inline pros::adi::DigitalIn limit_switch('A');
 
 /**
 Pneumatics
