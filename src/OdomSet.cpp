@@ -3,23 +3,25 @@
 #include "pros/apix.h"
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // =============================
-// Wheel geometry 
+// Wheel geometry
 // =============================
 constexpr double VERT_DIAM_IN = 2.75;
 constexpr double HORZ_DIAM_IN = 2.00;
 
 // =============================
-// ODOM OFFSETS 
+// ODOM OFFSETS (MEASURE THESE)
 // =============================
-// Distance between the LEFT and RIGHT vertical tracking wheels (center-to-center).
-// Measure in inches.
-constexpr double TRACK_WIDTH_IN = 6.0;   // <-- CHANGE THIS
+// Distance between LEFT and RIGHT vertical trackers (inches)
+constexpr double TRACK_WIDTH_IN = 6.0;
 
-// Horizontal wheel offset from robot center (inches):
-// + if the horizontal wheel is IN FRONT of the robot center
-// - if the horizontal wheel is BEHIND the robot center
-constexpr double H_OFFSET_IN = -3.0;       // <-- CHANGE THIS (0 only if it's exactly centered)
+// Horizontal wheel offset from robot center (inches)
+// + if in FRONT of center, - if BEHIND center
+constexpr double H_OFFSET_IN = -3.0;
 
 // =============================
 constexpr double DEG2RAD = M_PI / 180.0;
@@ -30,7 +32,7 @@ constexpr double RAD2DEG = 180.0 / M_PI;
 // =============================
 double odomX = 0.0;      // field X (right +)
 double odomY = 0.0;      // field Y (forward +)
-double odomTheta = 0.0;  // heading radians
+double odomTheta = 0.0;  // heading radians, 0 = facing +Y
 
 // =============================
 // Helpers
@@ -46,7 +48,7 @@ static double rotCdegToInches(double cdeg, double diamIn) {
 }
 
 static double wrapRad(double a) {
-  while (a > M_PI) a -= 2.0 * M_PI;
+  while (a > M_PI)  a -= 2.0 * M_PI;
   while (a < -M_PI) a += 2.0 * M_PI;
   return a;
 }
@@ -66,11 +68,15 @@ void updateOdom() {
   if (IMU.is_calibrating()) return;
 
   // Read sensors (apply sign flips here ONCE)
-  // Forward should be + for BOTH vertical wheels.
+  // Convention:
+  //  - forward movement should be + for BOTH vertical wheels
+  //  - strafe right should be + for horizontal wheel (after your mounting sign is correct)
+
   const double vlNow = rotCdegToInches(-LVerticalTracker.get_position(), VERT_DIAM_IN);
   const double vrNow = rotCdegToInches( RVerticalTracker.get_position(), VERT_DIAM_IN);
   const double hNow  = rotCdegToInches( HorizontalTracker.get_position(), HORZ_DIAM_IN);
 
+  // Heading radians
   const double heading = IMU.get_rotation() * DEG2RAD;
   if (!std::isfinite(heading)) return;
 
@@ -81,7 +87,7 @@ void updateOdom() {
 
   const double dTheta = wrapRad(heading - lastHeading);
 
-  // Save state
+  // Save last readings
   lastVL = vlNow;
   lastVR = vrNow;
   lastH  = hNow;
@@ -93,20 +99,24 @@ void updateOdom() {
   // Forward/back is average of vertical wheels
   const double dY_robot = (dVL + dVR) * 0.5;
 
-  // Strafe is horizontal wheel minus the amount caused purely by turning
-  // Turning causes the horizontal wheel to roll: arc = dTheta * offset
+  // Strafe is horizontal wheel minus roll caused purely by turning
+  // Turning causes horizontal wheel to roll: arc = dTheta * offset
   const double dX_robot = dH - (dTheta * H_OFFSET_IN);
 
-  // Compare IMU turn vs wheel turn:
+  // (Optional) Wheel-based heading check:
   // const double dTheta_wheels = (dVR - dVL) / TRACK_WIDTH_IN;
 
   // =============================
-  // Robot -> Field transform (use mid-heading)
+  // Robot -> Field transform (use mid-heading for better integration)
+  // heading 0 rad = +Y forward
   // =============================
   const double midHeading = heading - (dTheta * 0.5);
   const double sinH = std::sin(midHeading);
   const double cosH = std::cos(midHeading);
 
+  // With heading=0:
+  //   fieldX += dX_robot
+  //   fieldY += dY_robot
   odomX += dX_robot * cosH - dY_robot * sinH;
   odomY += dX_robot * sinH + dY_robot * cosH;
 
