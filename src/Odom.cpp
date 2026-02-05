@@ -40,7 +40,7 @@ static inline double degToRad(double d) {
 
 // Rotation sensor returns degrees. Convert deg -> inches for wheel travel.
 static inline double degToIn(double deg, double wheelDiamIn) {
-  return (deg / 360.0) * (M_PI * wheelDiamIn);
+  return (deg / 36000.0) * (M_PI * wheelDiamIn);
 }
 
 // =============================
@@ -83,7 +83,7 @@ void odomTask() {
 
   while (true) {
     // --- Wheel positions (deg) ---
-    const double Ldeg = LVerticalTracker.get_position();
+    const double Ldeg = -LVerticalTracker.get_position();
     const double Rdeg = RVerticalTracker.get_position();
     const double Hdeg = HorizontalTracker.get_position();
 

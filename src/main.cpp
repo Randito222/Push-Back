@@ -2,6 +2,7 @@
 #include <math.h>
 #include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
+#include "Odom.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
 
@@ -39,6 +40,7 @@ ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is para
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
+  odomReset();
   //Drive_Controls_task.resume(); // Start the drive control task
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
@@ -66,13 +68,10 @@ void initialize() {
 
   // Autonomous Selector using LLEMU
   ez::as::auton_selector.autons_add({
-      // {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
        {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
        {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
-      //{"Tuning PID\n\nThis will run a drive and turn motion to help you tune your PID values.", Tuning_PID},
-      // {"Bruin Right Auton\n\nAuton for Bruin right side.", BruinRightAuto},
       {"Skills\n\nAuton for Skills.", Skills},
-      //{"Bruin Left Auton\n\nAuton for Bruin left side.", BruinLeftAuto},
    });
 
 
@@ -290,7 +289,7 @@ void opcontrol() {
     //chassis.opcontrol_tank();
     
     
-    //DriveControl();  // Run the drive control function
+    DriveControl();  // Run the drive control function
     
     
     // . . .

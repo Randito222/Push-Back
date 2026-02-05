@@ -33,13 +33,13 @@ void driveToPoint_XDrive_PID(
   const uint32_t start = pros::millis();
 
   // --- TUNING ---
-  const double kP_xy = 6.0;
-  const double kD_xy = 22.0;
+  const double kP_xy = 1.0;
+  const double kD_xy = 0.0;
 
-  const double kP_h  = 95.0;   // rad -> power
-  const double kD_h  = 240.0;
+  const double kP_h  = 0.0;   // rad -> power
+  const double kD_h  = 0.0;
 
-  const double posTol   = 0.75;               // in
+  const double posTol   = 1.25;               // in
   const double headTol  = 2.0 * M_PI / 180.0; // rad
 
   const double MIN_XY = 8.0;
@@ -49,7 +49,7 @@ void driveToPoint_XDrive_PID(
   // "kSlow" converts remaining distance (in) -> allowed max power.
   // Higher = faster near target, lower = less overshoot/slip.
   const double kSlow = 7.0;            // power per inch
-  const int    minDriveNear = 25;      // cap near target so it doesn't crawl forever
+  const int    minDriveNear = 8;      // cap near target so it doesn't crawl forever
 
   // Settle logic
   const int settleMsNeeded = 150;      // must be within tolerance for this long
@@ -124,6 +124,14 @@ void driveToPoint_XDrive_PID(
     xOut = clampd(xOut, -dynMaxDrive, dynMaxDrive);
     yOut = clampd(yOut, -dynMaxDrive, dynMaxDrive);
     hOut = clampd(hOut, -maxTurn, maxTurn);
+
+    auto deadband = [](double v, double db) {
+    return (std::fabs(v) < db) ? 0.0 : v;
+    };
+
+    xOut = deadband(xOut, 2.0);
+    yOut = deadband(yOut, 2.0);
+    hOut = deadband(hOut, 2.0);
 
     // Minimum outputs (only when not basically settled)
     if (!inTol) {
