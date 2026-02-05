@@ -1,9 +1,9 @@
 #include "autons.hpp"
+#include "Auto.hpp"
+
+#include "Drive.hpp"
 #include "EZ-Template/drive/drive.hpp"
-#include "XDrive_PID.hpp"
 #include "main.h"
-#include "pros/device.hpp"
-#include "pros/motors.h"
 #include "subsystems.hpp"
 
 /////
@@ -15,6 +15,7 @@
 const int DRIVE_SPEED = 110;
 const int TURN_SPEED = 90;
 const int SWING_SPEED = 110;
+
 
 ///
 // Constants
@@ -62,25 +63,9 @@ void default_constants() {
 
 void AutonTesting(){
 
-  FrontIntake.move(127); // Spins intake to grab preload
-  DriveToPoint_OdomPID(-7,8,0, 100, 1200, 40); 
-
-  DriveToPoint_OdomPID(-7, 37,  0,30, 4000, 40);
-
-  DriveToPoint_OdomPID(-7, 37,  -90,100, 1000, 40);
-
-  DriveToPoint_OdomPID(-17, 37,  -90,100, 1000, 40);
-
-  DriveToPoint_OdomPID(-17, 37.5,  -137,100, 1000, 40);
-
-  IntakeLift.set_value(1);
-  Arm.move_absolute(-920,70);  // Stop the intake motor when B is pressed
-  pros::delay(950); // Waits to make sure preload is out
-  IntakeLift.set_value(0);
-  Arm.move_absolute(0,200);  // Stop the intake motor when B is pressed
-
-  DriveToPoint_OdomPID(-16.5, 37,  -180,100, 1000, 40);  
- 
+  resetOdom(drive);
+  startHeadingTask(drive, 10);  // if not already running
+  driveToPoint(drive, 20, 0, 0, 0.9, 0.7, 2500);
 
 
 
@@ -115,197 +100,84 @@ void AutonTesting(){
 }
 
 void soloAWP(){
-  chassis.pid_drive_set(36, DRIVE_SPEED, true); // Goes towards the preload area
-  chassis.pid_wait();
+  // This routine is rewritten to use the same control style as 20164X:
+  // field-centric vector drive + heading hold, with slew-limited motor outputs.
+  // Coordinates assume: X right +, Y forward +, heading 0 = +Y.
 
-  chassis.pid_turn_set(90, TURN_SPEED); // Turns to face preload
-  chassis.pid_wait();
-  
-  IntakeSpin(); // Spins intake to grab preload
+  // 1) Go to preload area
+  driveToPoint(drive, 0, 36, 0, 0.85, 0.55, 2500);
 
-  chassis.pid_drive_set(6, DRIVE_SPEED); // Moves forward to grab preload
-  chassis.pid_wait();
+  // 2) Turn and intake preload
+  turnToHeading(drive, 90, 0.65, 1500);
+  FrontIntake.move(127);
+  driveToPoint(drive, 6, 36, 90, 0.55, 0.55, 1200);
+  pros::delay(400);
 
-  pros::delay(500); // Waits to make sure preload is in intake
-  IntakeSpin(); // Stops intake
-
-  chassis.pid_drive_set(-42, DRIVE_SPEED, true); // Backs away from preload area into the side tube
-  chassis.pid_wait();
-
-  IntakeSpin(); // Spins intake to outtake preload into the side tube
-  pros::delay(500); // Waits to make sure preload is out
-
-  chassis.pid_drive_set(6, DRIVE_SPEED); // Moves forward to clear the side tube
-  chassis.pid_wait_quick_chain(); // Quick chain to next movement for faster movement
- 
-  chassis.pid_turn_set(200, TURN_SPEED); // Turns to face middle balls and middle tube
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(35, DRIVE_SPEED, true); // Drives to middle balls and middle tube 
-  chassis.pid_wait_until(25); // Waits until 25 inches away to start intaking
-  chassis.pid_speed_max_set(50); // Slows down max speed to 50 for better control
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(30, TURN_SPEED); // Turns for back faces middle goal
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-8, DRIVE_SPEED, true); // Backs up to get touch middle goal
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(160, TURN_SPEED); // Turns to face the other middle balls
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(50, DRIVE_SPEED, true); // Drives to the other middle balls and goes to other side tube
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(90, TURN_SPEED); // Turns for back to face the side tube
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-12, DRIVE_SPEED); // Backs up to get touch the side tube and score
-  chassis.pid_wait();
-
-  pros::delay(1000); // Waits to make sure preload is out
-  IntakeSpin(); // Stops intake
+  // 3) Back out and score (placeholder path — tune points to your field start)
+  FrontIntake.move(0);
+  driveToPoint(drive, 0, 0, 90, 0.85, 0.55, 3000);
 }
 
 void RightSideAuton(){
 
-  
-  FrontIntake.move(127); // Spins intake to grab 3 blocks
+  // NOTE: This is a 20164X-style *template* for your right-side auto.
+  // You MUST tune these target points to your actual start tile and game plan.
+  // The important part is that every move is now:
+  //   driveToPoint20164X(...) / turnToHeading20164X(...)
 
-  chassis.pid_drive_set(7, DRIVE_SPEED);
-  chassis.pid_wait_quick_chain();
+  FrontIntake.move(127);
 
-  chassis.pid_turn_set(12,TURN_SPEED);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(10, 100, true); // Goes towards the 3 block area
-  chassis.pid_wait_quick_chain();
+  // Example path: approach 3 blocks
+  driveToPoint(drive, 0, 7, 0, 0.75, 0.55, 1200);
+  turnToHeading(drive, 12, 0.60, 1000);
+  driveToPoint(drive, 3, 17, 12, 0.60, 0.55, 1600);
 
   TongueMech.set_value(1);
-
-  chassis.pid_drive_set(13, 50, true); // Goes towards the 3 block area
-  chassis.pid_wait();
-
-  pros::delay(1000); // Waits to make sure blocks are in intake
-
+  pros::delay(150);
   TongueMech.set_value(0);
 
-  chassis.pid_drive_set(-8, DRIVE_SPEED);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(-55, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(14, DRIVE_SPEED, true); // Backs away from 3 block area into the side tube
-  chassis.pid_wait_quick_chain();
-
-  FrontIntake.move(-90); // Outtakes blocks into the goal
-  pros::delay(2100); // Waits to make sure blocks are out
-  FrontIntake.move(0); // Stops intake;
-
-  chassis.pid_drive_set(-3, DRIVE_SPEED); // Turns to face the other side tube
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(0, TURN_SPEED); // Turns to face the other side tube
-  chassis.pid_wait();
-
-  DriveToPoint_OdomPID(0, 0, 0);
-
-  
-
-  // chassis.pid_turn_set(-55, TURN_SPEED); // Turns to face the other side tube
-  // chassis.pid_wait_quick_chain();
-
-  // chassis.pid_drive_set(-31, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  // chassis.pid_wait_quick_chain();
-
-  // chassis.pid_turn_set(-178, TURN_SPEED); // Moves forward to clear the side tube
-  // chassis.pid_wait();
-
-  // TongueMech.set_value(1); // Outtakes blocks into the goal
-  // FrontIntake.move(127);
-
-  // chassis.pid_drive_set(14, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  // chassis.pid_wait();
-  // pros::delay(1000);
-
-  // chassis.pid_drive_set(-20, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  // chassis.pid_wait();
-
-  // Arm.move_absolute(-530,130);  // 
-  // pros::delay(800);
-  // Arm.move_absolute(0,130);  //
-
+  // Back out, turn to goal, score
+  driveToPoint(drive, 0, 9, 12, 0.70, 0.55, 1200);
+  turnToHeading(drive, -55, 0.70, 1200);
+  driveToPoint(drive, -6, 20, -55, 0.70, 0.60, 2000);
+  FrontIntake.move(-90);
+  pros::delay(1800);
+  FrontIntake.move(0);
 }
 
 void LeftSideAuton(){
+  // 20164X-style *template* for your left-side auto.
+  // Replace the target points with your real field coordinates.
 
-  FrontIntake.move(127); // Spins intake to grab 3 blocks
-
-  chassis.pid_drive_set(7, DRIVE_SPEED);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(-15,TURN_SPEED);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(23, 50, true); // Goes towards the 3 block area
-  chassis.pid_wait();
-
-  pros::delay(1000); // Waits to make sure blocks are in intake
-
-  chassis.pid_drive_set(-8, DRIVE_SPEED);
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(226, TURN_SPEED);
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-13, DRIVE_SPEED, true); // Backs away from 3 block area into the side tube
-  chassis.pid_wait();
-
-  IntakeLift.set_value(1);
-  FrontIntake.move(90); // Outtakes blocks into the goal
-  Arm.move_absolute(-700, 180);
-  pros::delay(1200); // Waits to make sure blocks are out
-  FrontIntake.move(0); // Stops intake
-  Arm.move_absolute(0, 130);
-
-  chassis.pid_turn_set(55, TURN_SPEED); // Turns to face the other side tube
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_drive_set(31, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  chassis.pid_wait_quick_chain();
-
-  chassis.pid_turn_set(178, TURN_SPEED); // Moves forward to clear the side tube
-  chassis.pid_wait();
-
-  TongueMech.set_value(1); // Outtakes blocks into the goal
   FrontIntake.move(127);
 
-  chassis.pid_drive_set(6, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  chassis.pid_wait();
+  // Example: approach blocks on left
+  driveToPoint(drive, 0, 7, 0, 0.75, 0.55, 1200);
+  turnToHeading(drive, -15, 0.60, 1000);
+  driveToPoint(drive, -6, 22, -15, 0.60, 0.55, 2000);
+
+  // Example scoring sequence
+  IntakeLift.set_value(1);
+  FrontIntake.move(90);
+  Arm.move_absolute(-700, 180);
   pros::delay(1000);
-
-  chassis.pid_drive_set(-20, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  chassis.pid_wait();
-
-  Arm.move_absolute(-530,130);  // 
-  pros::delay(800);
-  Arm.move_absolute(0,130);  //
-
+  FrontIntake.move(0);
+  Arm.move_absolute(0, 130);
+  IntakeLift.set_value(0);
 }
 
 void OffParkAuton(){
-  DriveToPoint_OdomPID(-5, 5, 0);
+  // Simple "get off the park" example.
+  driveToPoint(drive, -5, 5, 0, 0.85, 0.55, 1500);
 }
 
 void Skills(){
   FrontIntake.move(127); // Spins intake to grab preload
-  DriveToPoint_OdomPID(3,21,0, 40, 2000, 40);
-  DriveToPoint_OdomPID(0,3,0, 100, 1500, 40);
-  DriveToPoint_OdomPID(44, 0, 0, 100, 2000, 40);
-  DriveToPoint_OdomPID(0, 0, 180, 100, 3000, 40);
-  DriveToPoint_OdomPID(0, 17, 180, 100, 1500, 40);
+  driveToPoint(drive, 3, 21, 0, 0.35, 0.55, 2000);
+  driveToPoint(drive, 0, 3, 0, 0.85, 0.55, 1500);
+  driveToPoint(drive, 44, 0, 0, 0.85, 0.55, 2500);
+  driveToPoint(drive, 0, 0, 180, 0.85, 0.65, 3000);
+  driveToPoint(drive, 0, 17, 180, 0.85, 0.65, 1500);
   // pros::delay(500);
   // DriveToPoint_OdomPID(-1, -20, 0, 100, 1500, 40);
   // pros::delay(500);

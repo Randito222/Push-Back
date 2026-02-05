@@ -1,5 +1,6 @@
 #pragma once
 #include "pros/rtos.hpp"
+#include "Drive.hpp"
 
 // Global odom pose (field coordinates)
 extern double odomX;      // inches (right +)
@@ -8,7 +9,7 @@ extern double odomTheta;  // radians (CCW +)
 
 // Odom functions
 void updateOdom();
-void resetOdom();
+void resetOdom(FieldXDrive& drive);
 void printOdom();
 
 // Task entry (PROS Task expects void(*)(void*))

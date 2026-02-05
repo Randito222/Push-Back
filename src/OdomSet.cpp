@@ -1,4 +1,5 @@
 #include "OdomSet.hpp"
+#include "Drive.hpp"
 #include "subsystems.hpp"
 #include "pros/apix.h"
 #include <cmath>
@@ -126,14 +127,17 @@ void updateOdom() {
 // =============================
 // Reset
 // =============================
-void resetOdom() {
+void resetOdom(FieldXDrive& drive) {
+  IMU.set_rotation(0);
+  pros::delay(20);
+
+  // ✅ sync cached heading to the new IMU reference
+  drive.updateHeading();
+
   odomX = 0.0;
   odomY = 0.0;
   odomTheta = 0.0;
 
-  IMU.set_rotation(0);
-
-  // Clear rotation sensors
   LVerticalTracker.reset_position();
   RVerticalTracker.reset_position();
   HorizontalTracker.reset_position();
@@ -143,6 +147,8 @@ void resetOdom() {
   lastH  = 0.0;
   lastHeading = 0.0;
 }
+
+
 
 // =============================
 // Print

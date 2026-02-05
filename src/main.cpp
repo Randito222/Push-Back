@@ -1,5 +1,6 @@
 #include "main.h"
 #include <math.h>
+#include "Drive.hpp"
 #include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
 #include "OdomSet.hpp"
@@ -44,6 +45,7 @@ ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is para
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
+  IMU.reset();
   
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
@@ -62,8 +64,15 @@ void initialize() {
   chassis.opcontrol_drive_activebrake_set(0.0);   // Sets the active brake kP. We recommend ~2.  0 will disable.
   chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
 
-  resetOdom();
+  //resetOdom();
   pros::Task odom_task(odomTask);
+
+  // --- 20164X-style heading cache ---
+  // Your autonomous + X-drive control uses IMU on port 6 (subsystems.hpp).
+  // Cache heading in a separate task (matches the working 20164X project pattern).
+  drive.initializeImu(10);
+  drive.setMaxAccelPerLoop(10);      // tune: higher = snappier, lower = less slip
+  startHeadingTask(drive, 10); // update every 10ms
 
   // Set the drive to your own constants from autons.cpp!
   default_constants();
@@ -124,27 +133,8 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  resetOdom();
-  chassis.pid_targets_reset();                // Resets PID targets to 0
-  chassis.drive_imu_reset();                  // Reset gyro position to 0
-  chassis.drive_sensor_reset();               // Reset drive sensors to 0
-  chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
-  chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
-
-  /*
-  Odometry and Pure Pursuit are not magic
-
-  It is possible to get perfectly consistent results without tracking wheels,
-  but it is also possible to have extremely inconsistent results without tracking wheels.
-  When you don't use tracking wheels, you need to:
-   - avoid wheel slip
-   - avoid wheelies
-   - avoid throwing momentum around (super harsh turns, like in the example below)
-  You can do cool curved motions, but you have to give your robot the best chance
-  to be consistent
-  */
-
-  ez::as::auton_selector.selected_auton_call();  // Calls selected auton from autonomous selector
+  resetOdom(drive);
+  ez::as::auton_selector.selected_auton_call();  // Calls selected auton
 }
 
 /**
