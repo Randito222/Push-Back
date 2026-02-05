@@ -2,8 +2,6 @@
 #include <math.h>
 #include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
-#include "OdomSet.hpp"
-#include "XDrive_PID.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
 

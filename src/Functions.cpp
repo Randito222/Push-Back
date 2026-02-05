@@ -21,10 +21,6 @@ void setDrivePower(int fl, int fr, int bl, int br) {
   Back_Right_2.move(br);
 } 
 
-// void IntakeSpin() {
-//   // Spin the intake motor
-//   Intake.move_velocity(200);  // Set the intake motor to spin at 200 RPM
-// }
 
 // Start by storing the robot's current heading as the initial target
 double targetAngle = IMU.get_heading();
