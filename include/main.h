@@ -48,9 +48,11 @@
 #include "autons.hpp"
 #include "subsystems.hpp"
 #include "functions.hpp"
-#include "XDrive_PID.hpp"
 #include "Task.hpp"
-#include "OdomSet.hpp"
+#include "odom.hpp"
+#include "XDriveAutos.hpp"
+#include "EncoderPIDAutos.hpp"
+
 
 
 /**

@@ -43,89 +43,57 @@ int slewDrive(int target, int current, int rate) {
     return current;
 }
 
-void DriveControl() {
+void DriveControlUnified(bool fieldCentric) {
+  // Persistent output (slew)
   static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
   const int slewRate = 40;
 
+  // Controller input
   double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
   double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
   double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
-  if (fabs(forward) < 5) forward = 0;
-  if (fabs(strafe)  < 5) strafe  = 0;
-  if (fabs(rotate)  < 5) rotate  = 0;
+  // Deadzones
+  if (std::fabs(forward) < 5) forward = 0;
+  if (std::fabs(strafe)  < 5) strafe  = 0;
+  if (std::fabs(rotate)  < 5) rotate  = 0;
 
-  double headingRad = IMU.get_rotation() * M_PI / 180.0;
+  // Field-centric transform (field -> robot)
+  if (fieldCentric) {
+    const double headingRad = IMU.get_rotation() * M_PI / 180.0;
+    const double c = std::cos(headingRad);
+    const double s = std::sin(headingRad);
 
-  // Field -> robot (rotate by -heading)
-  double f =  forward * cos(headingRad) + strafe * sin(headingRad);
-  double s = -forward * sin(headingRad) + strafe * cos(headingRad);
-  double r = rotate;
+    const double tempForward =  forward * c + strafe * s;
+    const double tempStrafe  = -forward * s + strafe * c;
 
-  // Mix
-  double fl = f + s + r;
-  double fr = f - s - r;
-  double bl = f - s + r;
-  double br = f + s - r;
-
-  // Normalize
-  double maxMag = std::max({fabs(fl), fabs(fr), fabs(bl), fabs(br)});
-  if (maxMag > 127.0) {
-    double scale = 127.0 / maxMag;
-    fl *= scale; fr *= scale; bl *= scale; br *= scale;
+    forward = tempForward;
+    strafe  = tempStrafe;
   }
 
-  int flTarget = (int)fl;
-  int frTarget = (int)fr;
-  int blTarget = (int)bl;
-  int brTarget = (int)br;
-
-  auto applySlew = [&](int target, int &current) {
-    int diff = target - current;
-    if (abs(diff) <= slewRate) current = target;
-    else current += (diff > 0 ? slewRate : -slewRate);
-  };
-
-  applySlew(flTarget, flPower);
-  applySlew(frTarget, frPower);
-  applySlew(blTarget, blPower);
-  applySlew(brTarget, brPower);
-
-  setDrivePower(flPower, frPower, blPower, brPower);
-}
-
-void DriveControlBackUp() {
-  static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
-  const int slewRate = 40;
-
-  double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
-  double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
-  double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
-
-  if (fabs(forward) < 5) forward = 0;
-  if (fabs(strafe)  < 5) strafe  = 0;
-  if (fabs(rotate)  < 5) rotate  = 0;
-
+  // Mix
   double fl = forward + strafe + rotate;
   double fr = forward - strafe - rotate;
   double bl = forward - strafe + rotate;
   double br = forward + strafe - rotate;
 
-  // Normalize
-  double maxMag = std::max({fabs(fl), fabs(fr), fabs(bl), fabs(br)});
+  // Normalize (IMPORTANT: do this for BOTH modes)
+  double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br)});
   if (maxMag > 127.0) {
-    double scale = 127.0 / maxMag;
+    const double scale = 127.0 / maxMag;
     fl *= scale; fr *= scale; bl *= scale; br *= scale;
   }
 
+  // Targets
   int flTarget = (int)fl;
   int frTarget = (int)fr;
   int blTarget = (int)bl;
   int brTarget = (int)br;
 
+  // Slew (diff-based = stable)
   auto applySlew = [&](int target, int &current) {
     int diff = target - current;
-    if (abs(diff) <= slewRate) current = target;
+    if (std::abs(diff) <= slewRate) current = target;
     else current += (diff > 0 ? slewRate : -slewRate);
   };
 
@@ -136,6 +104,7 @@ void DriveControlBackUp() {
 
   setDrivePower(flPower, frPower, blPower, brPower);
 }
+
 
 
 void IntakeLiftToggle(){

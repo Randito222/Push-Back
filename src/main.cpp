@@ -1,10 +1,7 @@
 #include "main.h"
 #include <math.h>
-#include "Drive.hpp"
 #include "EZ-Template/drive/drive.hpp"
 #include "EZ-Template/util.hpp"
-#include "OdomSet.hpp"
-#include "XDrive_PID.hpp"
 #include "autons.hpp"
 #include "pros/misc.h"
 #include "subsystems.hpp"
@@ -45,34 +42,25 @@ ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is para
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
-  IMU.reset();
-  
+  IMU.reset();  // Calibrate the IMU (Gyro)
+  odomReset();
+  //Drive_Controls_task.resume(); // Start the drive control task
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
   // Look at your horizontal tracking wheel and decide if it's in front of the midline of your robot or behind it
   //  - change `back` to `front` if the tracking wheel is in front of the midline
   //  - ignore this if you aren't using a horizontal tracker
-  //chassis.odom_tracker_back_set(&horiz_tracker);
+  chassis.odom_tracker_back_set(&horiz_tracker);
   // Look at your vertical tracking wheel and decide if it's to the left or right of the center of the robot
   //  - change `left` to `right` if the tracking wheel is to the right of the centerline
   //  - ignore this if you aren't using a vertical tracker
-  //chassis.odom_tracker_right_set(&vert_tracker);
+  chassis.odom_tracker_right_set(&vert_tracker);
 
   // Configure your chassis controls
   chassis.opcontrol_curve_buttons_toggle(true);   // Enables modifying the controller curve with buttons on the joysticks
   chassis.opcontrol_drive_activebrake_set(0.0);   // Sets the active brake kP. We recommend ~2.  0 will disable.
   chassis.opcontrol_curve_default_set(0.0, 0.0);  // Defaults for curve. If using tank, only the first parameter is used. (Comment this line out if you have an SD card!)
-
-  //resetOdom();
-  pros::Task odom_task(odomTask);
-
-  // --- 20164X-style heading cache ---
-  // Your autonomous + X-drive control uses IMU on port 6 (subsystems.hpp).
-  // Cache heading in a separate task (matches the working 20164X project pattern).
-  drive.initializeImu(10);
-  drive.setMaxAccelPerLoop(10);      // tune: higher = snappier, lower = less slip
-  startHeadingTask(drive, 10); // update every 10ms
 
   // Set the drive to your own constants from autons.cpp!
   default_constants();
@@ -81,21 +69,21 @@ void initialize() {
   // chassis.opcontrol_curve_buttons_left_set(pros::E_CONTROLLER_DIGITAL_LEFT, pros::E_CONTROLLER_DIGITAL_RIGHT);  // If using tank, only the left side is used.
   // chassis.opcontrol_curve_buttons_right_set(pros::E_CONTROLLER_DIGITAL_Y, pros::E_CONTROLLER_DIGITAL_A);
 
-// Autonomous Selector using LLEMU
-ez::as::auton_selector.autons_add({
-  {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
-  {"Right Side\n\n This auton grabs 3 blocks on the right side and scores them.", RightSideAuton},
-  {"Off Park\n\n This auton gets the robot off the park if alliance has full awp.", OffParkAuton},
-  {"Skills\n\n This is skills", Skills},
- 
-});
+  // Autonomous Selector using LLEMU
+  ez::as::auton_selector.autons_add({
+      //{"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+       {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
+       {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
+      {"Skills\n\nAuton for Skills.", Skills},
+   });
 
 
 
   // Initialize chassis and auton selector
+  pros::Task OdomTask(odomTask);
   chassis.initialize();
   ez::as::initialize();
-  master.rumble(chassis.drive_imu_calibrated() ? ".." : "---");
+  master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
   
 }
 
@@ -133,7 +121,6 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  resetOdom(drive);
   ez::as::auton_selector.selected_auton_call();  // Calls selected auton
 }
 
@@ -247,7 +234,6 @@ void opcontrol() {
 
   while (true) {
 
-    printOdom();
     ArmAction();
     IntakeLiftToggle();
     MatchLoading();

@@ -1,9 +1,8 @@
 #include "autons.hpp"
-#include "Auto.hpp"
-
-#include "Drive.hpp"
 #include "EZ-Template/drive/drive.hpp"
+#include "EncoderPIDAutos.hpp"
 #include "main.h"
+#include "pros/motors.h"
 #include "subsystems.hpp"
 
 /////
@@ -15,7 +14,6 @@
 const int DRIVE_SPEED = 110;
 const int TURN_SPEED = 90;
 const int SWING_SPEED = 110;
-
 
 ///
 // Constants
@@ -56,133 +54,89 @@ void default_constants() {
   chassis.pid_angle_behavior_set(ez::shortest);  // Changes the default behavior for turning, this defaults it to the shortest path there
 }
 
-// . . .
-// Make your own autonomous functions here!
-// . . .
-
-
 void AutonTesting(){
-
-  resetOdom(drive);
-  startHeadingTask(drive, 10);  // if not already running
-  driveToPoint(drive, 20, 0, 0, 0.9, 0.7, 2500);
-
-
-
-  // FrontIntake.move(127); // Spins intake to grab preload
-  // DriveToPoint_OdomPID(12,8,-45, 100, 1500, 40); 
-
-  // FrontIntake.move(127); // Spins intake to grab preload
-  // DriveToPoint_OdomPID(12,9,-45, 100, 1500, 40); 
-
-  // DriveToPoint_OdomPID(27, 20, -45, 30, 2000, 20);
-  // pros::delay(50);
-
-  // DriveToPoint_OdomPID(27, 20, -130, 60, 2000, 40);
-
-  // IntakeLift.set_value(1); // Lifts intake to score
-  // DriveToPoint_OdomPID(14, 26, -130, 80, 3000, 30);
-  // Arm.move_absolute(-900,45);  // Stop the intake motor when B is pressed
-
-  // pros::delay(900); // Waits to make sure preload is out
-  // IntakeLift.set_value(0); // Lifts intake to score
-  // Arm.move_absolute(0,200);  // Stop the intake motor when B is pressed
-  // DriveToPoint_OdomPID(50, 0, -130, 80, 2000, 30);
-
-  // TongueMech.set_value(1);
-  // DriveToPoint_OdomPID(50, 0, -180, 80, 2000, 30);
-
-  // DriveToPoint_OdomPID(45, -20, -180, 80, 2000, 30);
-
-  // DriveToPoint_OdomPID(45, 10,  -180, 80, 2000, 30);
   
   
 }
 
 void soloAWP(){
-  // This routine is rewritten to use the same control style as 20164X:
-  // field-centric vector drive + heading hold, with slew-limited motor outputs.
-  // Coordinates assume: X right +, Y forward +, heading 0 = +Y.
-
-  // 1) Go to preload area
-  driveToPoint(drive, 0, 36, 0, 0.85, 0.55, 2500);
-
-  // 2) Turn and intake preload
-  turnToHeading(drive, 90, 0.65, 1500);
-  FrontIntake.move(127);
-  driveToPoint(drive, 6, 36, 90, 0.55, 0.55, 1200);
-  pros::delay(400);
-
-  // 3) Back out and score (placeholder path — tune points to your field start)
-  FrontIntake.move(0);
-  driveToPoint(drive, 0, 0, 90, 0.85, 0.55, 3000);
 }
 
 void RightSideAuton(){
+  FrontIntake.move(127);  // Spin the intake 
 
-  // NOTE: This is a 20164X-style *template* for your right-side auto.
-  // You MUST tune these target points to your actual start tile and game plan.
-  // The important part is that every move is now:
-  //   driveToPoint20164X(...) / turnToHeading20164X(...)
+  turnToHeading_IMUPID(15, 50, 1500);
 
-  FrontIntake.move(127);
-
-  // Example path: approach 3 blocks
-  driveToPoint(drive, 0, 7, 0, 0.75, 0.55, 1200);
-  turnToHeading(drive, 12, 0.60, 1000);
-  driveToPoint(drive, 3, 17, 12, 0.60, 0.55, 1600);
+  driveForward_EncoderPID(17, 15, 50, TURN_SPEED, 3000);
 
   TongueMech.set_value(1);
-  pros::delay(150);
+
+  driveForward_EncoderPID(22, 15, 50, TURN_SPEED, 3000);
+
+  driveForward_EncoderPID(-28, 15, 40, 50, 5000);
+
+  turnToHeading_IMUPID(90, 50, 1500);
+
+  driveForward_EncoderPID(31, 90, 50, TURN_SPEED, 3000);
+
   TongueMech.set_value(0);
 
-  // Back out, turn to goal, score
-  driveToPoint(drive, 0, 9, 12, 0.70, 0.55, 1200);
-  turnToHeading(drive, -55, 0.70, 1200);
-  driveToPoint(drive, -6, 20, -55, 0.70, 0.60, 2000);
-  FrontIntake.move(-90);
-  pros::delay(1800);
-  FrontIntake.move(0);
+  turnToHeading_IMUPID(85, 50, 1000);
+
+  driveForward_EncoderPID(-25, 180, 50, TURN_SPEED, 3000);
+
+  Arm.move_absolute(-700, 180);
+  pros::delay(1200);
+  Arm.move_absolute(0, 130);
+
+  driveForward_EncoderPID(5, 180, 50, TURN_SPEED, 3000);
+
 }
 
 void LeftSideAuton(){
-  // 20164X-style *template* for your left-side auto.
-  // Replace the target points with your real field coordinates.
 
-  FrontIntake.move(127);
+  FrontIntake.move(127);  // Spin the intake 
 
-  // Example: approach blocks on left
-  driveToPoint(drive, 0, 7, 0, 0.75, 0.55, 1200);
-  turnToHeading(drive, -15, 0.60, 1000);
-  driveToPoint(drive, -6, 22, -15, 0.60, 0.55, 2000);
+  turnToHeading_IMUPID(-35, 50, 1500);
 
-  // Example scoring sequence
-  IntakeLift.set_value(1);
-  FrontIntake.move(90);
+  driveForward_EncoderPID(20, -35, 50, TURN_SPEED, 3000);
+
+  TongueMech.set_value(1);
+
+  driveForward_EncoderPID(22, -35, 50, TURN_SPEED, 3000);
+
+  driveForward_EncoderPID(-28, -35, 40, 50, 5000);
+
+  turnToHeading_IMUPID(-95, 50, 1500);
+
+  driveForward_EncoderPID(36, -95, 50, TURN_SPEED, 3000);
+
+  TongueMech.set_value(0);
+
+  turnToHeading_IMUPID(-89, 50, 1000);
+
+  driveForward_EncoderPID(-25, -177, 50, TURN_SPEED, 3000);
+
   Arm.move_absolute(-700, 180);
-  pros::delay(1000);
-  FrontIntake.move(0);
+  pros::delay(1200);
   Arm.move_absolute(0, 130);
-  IntakeLift.set_value(0);
+
+  driveForward_EncoderPID(5, 180, 50, TURN_SPEED, 3000);
+
 }
 
-void OffParkAuton(){
-  // Simple "get off the park" example.
-  driveToPoint(drive, -5, 5, 0, 0.85, 0.55, 1500);
-}
 
 void Skills(){
-  FrontIntake.move(127); // Spins intake to grab preload
-  driveToPoint(drive, 3, 21, 0, 0.35, 0.55, 2000);
-  driveToPoint(drive, 0, 3, 0, 0.85, 0.55, 1500);
-  driveToPoint(drive, 44, 0, 0, 0.85, 0.55, 2500);
-  driveToPoint(drive, 0, 0, 180, 0.85, 0.65, 3000);
-  driveToPoint(drive, 0, 17, 180, 0.85, 0.65, 1500);
+  // Add auton code here
+
+  // FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
+  // chassis.pid_drive_set(30, DRIVE_SPEED ); // Goes towards the preload area
+  // chassis.pid_wait();
+
+  // chassis.pid_drive_set(-18, DRIVE_SPEED ); // Goes towards the preload area
+  // chassis.pid_wait();
+
+  // PID_Strafe(-80, 100);
   // pros::delay(500);
-  // DriveToPoint_OdomPID(-1, -20, 0, 100, 1500, 40);
-  // pros::delay(500);
-  // FrontIntake.move(127);
-  // pros::delay(3500);
-  // DriveToPoint_OdomPID(-1, 22, 180, 100, 1500, 40);
-  // pros::delay(500);
+  // PID_Strafe(40,  100);
 }
