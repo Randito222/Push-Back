@@ -1,5 +1,6 @@
 #include "autons.hpp"
 #include "EZ-Template/drive/drive.hpp"
+#include "EncoderPIDAutos.hpp"
 #include "main.h"
 #include "pros/motors.h"
 #include "subsystems.hpp"
@@ -54,156 +55,67 @@ void default_constants() {
 }
 
 void AutonTesting(){
+  FrontIntake.move(127);  // Spin the intake 
 
-  driveToPoint_XDrive_PID(0, 20, 0, 100, 20);
-  // // === MOVE 1: Forward 36 inches ===
-  // pros::Task move1([]() {
-  //   x_drive_pid_task(36.0, 0.0, 0.0); // Move to (36, 0) facing 0 degrees
-  // });
+  turnToHeading_IMUPID(-35, 50, 1500);
 
-  // pid_wait_until_distance(20.0); // Wait until within 20 inches
-  // Intake.move(120); // Start intake early
-  // pros::delay(1000);
-  // Intake.move_voltage(0); // Stop intake
+  driveForward_EncoderPID(20, -35, 50, TURN_SPEED, 3000);
 
-  // move1.join(); // Wait until move 1 is fully done
+  TongueMech.set_value(1);
 
+  driveForward_EncoderPID(22, -35, 50, TURN_SPEED, 3000);
 
-  // // === MOVE 2: Strafe right 24 inches ===
-  // pros::Task move2([]() {
-  //   x_drive_pid_task(36.0, 24.0, 0.0); // Move to (36, 24)
-  // });
+  driveForward_EncoderPID(-28, -35, 40, 50, 5000);
 
-  // pid_wait_until_distance(10.0); // Wait until close
-  // Intake.move(120); // Spin up flywheel
+  turnToHeading_IMUPID(-95, 50, 1500);
 
-  // move2.join();
+  driveForward_EncoderPID(36, -95, 50, TURN_SPEED, 3000);
 
+  TongueMech.set_value(0);
 
-  // // === MOVE 3: Turn in place (rotate to 90 degrees) ===
-  // pros::Task rotate([]() {
-  //   x_drive_pid_task(36.0, 24.0, 90.0); // Stay in place, rotate to 90 degrees
-  // });
+  turnToHeading_IMUPID(-89, 50, 1000);
 
-  // rotate.join();
-  // Intake.move_voltage(0); // Turn off flywheel
+  driveForward_EncoderPID(-25, -177, 50, TURN_SPEED, 3000);
 
+  Arm.move_absolute(-700, 180);
+  pros::delay(1200);
+  Arm.move_absolute(0, 130);
 
-  // // === MOVE 4: Move backward to start ===
-  // pros::Task move4([]() {
-  //   x_drive_pid_task(0.0, 0.0, 90.0); // Return to (0, 0) still facing 90 degrees
-  // });
-
-  // pid_wait_until_distance(15.0);
-  // move4.join();
+  driveForward_EncoderPID(5, 180, 50, TURN_SPEED, 3000);
   
 }
 
 void soloAWP(){
-  chassis.pid_drive_set(36, DRIVE_SPEED, true); // Goes towards the preload area
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(90, TURN_SPEED); // Turns to face preload
-  chassis.pid_wait();
-  
-  IntakeSpin(); // Spins intake to grab preload
-
-  chassis.pid_drive_set(6, DRIVE_SPEED); // Moves forward to grab preload
-  chassis.pid_wait();
-
-  pros::delay(500); // Waits to make sure preload is in intake
-  IntakeSpin(); // Stops intake
-
-  chassis.pid_drive_set(-42, DRIVE_SPEED, true); // Backs away from preload area into the side tube
-  chassis.pid_wait();
-
-  IntakeSpin(); // Spins intake to outtake preload into the side tube
-  pros::delay(500); // Waits to make sure preload is out
-
-  chassis.pid_drive_set(6, DRIVE_SPEED); // Moves forward to clear the side tube
-  chassis.pid_wait_quick_chain(); // Quick chain to next movement for faster movement
- 
-  chassis.pid_turn_set(200, TURN_SPEED); // Turns to face middle balls and middle tube
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(35, DRIVE_SPEED, true); // Drives to middle balls and middle tube 
-  chassis.pid_wait_until(25); // Waits until 25 inches away to start intaking
-  chassis.pid_speed_max_set(50); // Slows down max speed to 50 for better control
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(30, TURN_SPEED); // Turns for back faces middle goal
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-8, DRIVE_SPEED, true); // Backs up to get touch middle goal
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(160, TURN_SPEED); // Turns to face the other middle balls
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(50, DRIVE_SPEED, true); // Drives to the other middle balls and goes to other side tube
-  chassis.pid_wait();
-
-  chassis.pid_turn_set(90, TURN_SPEED); // Turns for back to face the side tube
-  chassis.pid_wait();
-
-  chassis.pid_drive_set(-12, DRIVE_SPEED); // Backs up to get touch the side tube and score
-  chassis.pid_wait();
-
-  pros::delay(1000); // Waits to make sure preload is out
-  IntakeSpin(); // Stops intake
 }
 
 void RightSideAuton(){
-  // FrontIntake.move(127); // Spins intake to grab 3 blocks
+  FrontIntake.move(127);  // Spin the intake 
 
-  // chassis.pid_drive_set(7, DRIVE_SPEED);
-  // chassis.pid_wait_quick_chain();
+  turnToHeading_IMUPID(15, 50, 1500);
 
-  // chassis.pid_turn_set(13,TURN_SPEED);
-  // chassis.pid_wait_quick_chain();
+  driveForward_EncoderPID(17, 15, 50, TURN_SPEED, 3000);
 
-  // chassis.pid_drive_set(23, 50, true); // Goes towards the 3 block area
-  // chassis.pid_wait();
+  TongueMech.set_value(1);
 
-  // pros::delay(1000); // Waits to make sure blocks are in intake
+  driveForward_EncoderPID(22, 15, 50, TURN_SPEED, 3000);
 
-  // chassis.pid_drive_set(-8, DRIVE_SPEED);
-  // chassis.pid_wait_quick_chain();
+  driveForward_EncoderPID(-28, 15, 40, 50, 5000);
 
-  // chassis.pid_turn_set(-44, TURN_SPEED);
-  // chassis.pid_wait();
+  turnToHeading_IMUPID(90, 50, 1500);
 
-  // chassis.pid_drive_set(15, DRIVE_SPEED, true); // Backs away from 3 block area into the side tube
-  // chassis.pid_wait_quick_chain();
+  driveForward_EncoderPID(31, 90, 50, TURN_SPEED, 3000);
 
-  // FrontIntake.move(-90); // Outtakes blocks into the goal
-  // pros::delay(2100); // Waits to make sure blocks are out
-  // FrontIntake.move(0); // Stops intake;
+  TongueMech.set_value(0);
 
-  
+  turnToHeading_IMUPID(85, 50, 1000);
 
-  // chassis.pid_turn_set(-55, TURN_SPEED); // Turns to face the other side tube
-  // chassis.pid_wait_quick_chain();
+  driveForward_EncoderPID(-25, 180, 50, TURN_SPEED, 3000);
 
-  // chassis.pid_drive_set(-31, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  // chassis.pid_wait_quick_chain();
+  Arm.move_absolute(-700, 180);
+  pros::delay(1200);
+  Arm.move_absolute(0, 130);
 
-  // chassis.pid_turn_set(-178, TURN_SPEED); // Moves forward to clear the side tube
-  // chassis.pid_wait();
-
-  // TongueMech.set_value(1); // Outtakes blocks into the goal
-  // FrontIntake.move(127);
-
-  // chassis.pid_drive_set(14, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  // chassis.pid_wait();
-  // pros::delay(1000);
-
-  // chassis.pid_drive_set(-20, DRIVE_SPEED, true); // Moves forward to clear the side tube
-  // chassis.pid_wait();
-
-  // Arm.move_absolute(-530,130);  // 
-  // pros::delay(800);
-  // Arm.move_absolute(0,130);  //
+  driveForward_EncoderPID(5, 180, 50, TURN_SPEED, 3000);
 
 }
 

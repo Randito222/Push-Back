@@ -40,6 +40,7 @@ ez::tracking_wheel vert_tracker(16, 2.75, 4.0);   // This tracking wheel is para
 void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
+  IMU.reset();  // Calibrate the IMU (Gyro)
   odomReset();
   //Drive_Controls_task.resume(); // Start the drive control task
 

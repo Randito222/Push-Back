@@ -50,6 +50,7 @@
 #include "Functions.hpp"
 #include "XDriveAutos.hpp"
 #include "Odom.hpp"
+#include "EncoderPIDAutos.hpp"
 
 
 

@@ -49,7 +49,7 @@ void DriveControl() {
     static int blPower = 0;
     static int brPower = 0;
 
-    const int slewRate = 50;   // Lower = smoother, higher = more responsive
+    const int slewRate = 40;   // Lower = smoother, higher = more responsive
 
     // =============================
     // Controller input with deadzones

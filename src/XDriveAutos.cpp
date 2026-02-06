@@ -32,35 +32,27 @@ void driveToPoint_XDrive_PID(
 ) {
   const uint32_t start = pros::millis();
 
-  // --- TUNING ---
-  const double kP_xy = 1.0;
-  const double kD_xy = 0.0;
+  // Stronger translation gains (yours are too low to overcome friction)
+  const double kP_xy = 6.0;
+  const double kD_xy = 18.0;
 
-  const double kP_h  = 0.0;   // rad -> power
-  const double kD_h  = 0.0;
+  // Heading hold (optional — set to 0 if you want translation-only while debugging)
+  const double kP_h = 35.0;     // was 80
+  const double kD_h = 120.0;    // was 200
 
-  const double posTol   = 1.25;               // in
-  const double headTol  = 2.0 * M_PI / 180.0; // rad
+  const double posTol  = 1.0;                 // inches
+  const double headTol = 2.0 * M_PI / 180.0;  // rad
 
-  const double MIN_XY = 8.0;
-  const double MIN_T  = 6.0;
+  const double MIN_XY = 10.0;  // bump this while debugging
+  const double MIN_T = 4.0;     // was 8 (too punchy)
 
-  // Dynamic slowdown (IMPORTANT)
-  // "kSlow" converts remaining distance (in) -> allowed max power.
-  // Higher = faster near target, lower = less overshoot/slip.
-  const double kSlow = 7.0;            // power per inch
-  const int    minDriveNear = 8;      // cap near target so it doesn't crawl forever
-
-  // Settle logic
-  const int settleMsNeeded = 150;      // must be within tolerance for this long
-  int settleMs = 0;
+  const double kSlow = 6.0;
+  const int    minDriveNear = 12; // not 25, but not 0 either
 
   const int loopMs = 10;
   const double dt = loopMs / 1000.0;
 
-  double lastXErr = 0;
-  double lastYErr = 0;
-  double lastHErr = 0;
+  double lastXErr = 0, lastYErr = 0, lastHErr = 0;
 
   const double targetH = wrapPi(targetHeadingDeg * M_PI / 180.0);
 
@@ -73,72 +65,39 @@ void driveToPoint_XDrive_PID(
 
     const double fxErr = targetX - cx;
     const double fyErr = targetY - cy;
+    const double dist  = std::hypot(fxErr, fyErr);
 
-    const double dist = std::hypot(fxErr, fyErr);
-
-    // Field -> Robot
     const double c = std::cos(ch);
     const double s = std::sin(ch);
 
-    const double xErr =  fxErr * c + fyErr * s;  // strafe +
-    const double yErr = -fxErr * s + fyErr * c;  // forward +
+    const double xErr =  fxErr * c + fyErr * s;  // robot strafe
+    const double yErr = -fxErr * s + fyErr * c;  // robot forward
     const double hErr = wrapPi(targetH - ch);
 
-    // --- Derivatives (also useful for "are we still moving?") ---
+    // Exit (simple)
+    if (dist < posTol && std::fabs(hErr) < headTol) break;
+
     const double dxErr = (xErr - lastXErr) / dt;
     const double dyErr = (yErr - lastYErr) / dt;
     const double dhErr = (hErr - lastHErr) / dt;
 
-    // "Speed" estimate in robot frame (in/s). This is NOT wheel speed, just error-change rate.
-    const double transRate = std::hypot(dxErr, dyErr);
+    lastXErr = xErr; lastYErr = yErr; lastHErr = hErr;
 
-    // --- Settling ---
-    const bool inTol = (dist < posTol) && (std::fabs(hErr) < headTol);
-
-    // Require it to be close AND not whipping past the target
-    const bool slowEnough = (transRate < 4.0) && (std::fabs(dhErr) < deg2rad(60.0)); 
-    // You can tighten later: transRate < 2.0, dhErr < deg2rad(30)
-
-    if (inTol && slowEnough) {
-      settleMs += loopMs;
-      if (settleMs >= settleMsNeeded) break;
-    } else {
-      settleMs = 0;
-    }
-
-    // --- PID (PD) ---
     double xOut = kP_xy * xErr + kD_xy * dxErr;
     double yOut = kP_xy * yErr + kD_xy * dyErr;
     double hOut = kP_h  * hErr + kD_h  * dhErr;
 
-    lastXErr = xErr;
-    lastYErr = yErr;
-    lastHErr = hErr;
-
-    // --- Dynamic translation cap based on remaining distance ---
-    // Far away: cap ~ maxDrive
-    // Near: cap shrinks, preventing overshoot and slip
+    // Dynamic max translation
     int dynMaxDrive = (int)std::round(std::min<double>(maxDrive, std::max<double>(minDriveNear, dist * kSlow)));
 
-    // Clamp with dynamic max
     xOut = clampd(xOut, -dynMaxDrive, dynMaxDrive);
     yOut = clampd(yOut, -dynMaxDrive, dynMaxDrive);
     hOut = clampd(hOut, -maxTurn, maxTurn);
 
-    auto deadband = [](double v, double db) {
-    return (std::fabs(v) < db) ? 0.0 : v;
-    };
-
-    xOut = deadband(xOut, 2.0);
-    yOut = deadband(yOut, 2.0);
-    hOut = deadband(hOut, 2.0);
-
-    // Minimum outputs (only when not basically settled)
-    if (!inTol) {
-      if (std::fabs(xOut) > 1 && std::fabs(xErr) > posTol) xOut = sgn(xOut) * std::max(std::fabs(xOut), MIN_XY);
-      if (std::fabs(yOut) > 1 && std::fabs(yErr) > posTol) yOut = sgn(yOut) * std::max(std::fabs(yOut), MIN_XY);
-      if (std::fabs(hOut) > 1 && std::fabs(hErr) > headTol) hOut = sgn(hOut) * std::max(std::fabs(hOut), MIN_T);
-    }
+    // Minimum translation power based on ERROR (prevents “jolt then stop”)
+    if (std::fabs(xErr) > posTol && std::fabs(xOut) < MIN_XY) xOut = sgn(xErr) * MIN_XY;
+    if (std::fabs(yErr) > posTol && std::fabs(yOut) < MIN_XY) yOut = sgn(yErr) * MIN_XY;
+    if (std::fabs(hErr) > headTol && std::fabs(hOut) < MIN_T)  hOut = sgn(hErr) * MIN_T;
 
     // Mix
     double fl = yOut + xOut + hOut;
@@ -159,6 +118,7 @@ void driveToPoint_XDrive_PID(
 
   setDrivePower(0,0,0,0);
 }
+
 
 
 void turnToHeading_PID(double targetDeg, int maxTurn, int timeoutMs) {
