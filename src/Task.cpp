@@ -4,6 +4,7 @@
 #include "subsystems.hpp"
 // #include "pros/competition.hpp"
 
+<<<<<<< HEAD
 // double Get_Color1() {
 //   return OP1.get_hue();
 // }
@@ -68,37 +69,39 @@
 //   }
 // }
 
+=======
+>>>>>>> eb373c8b96fdea7af4d61a601118ab7c94a35be5
 void Drive_Controls_swap() {
-  bool lastButtonState = false;  // Tracks the last state of the button to detect presses
-  bool fieldCentric = true;     // Start in robot-centric mode
+  bool fieldCentric = true;   // true = field, false = robot
+  bool lastX = false;
+
+  uint32_t lastToggleMs = 0;
+  const uint32_t cooldownMs = 200;
+
+  // Print once
+  master.clear_line(2);
+  master.print(2, 0, "Mode: Field");
 
   while (true) {
-    // Check if the X button is currently pressed
-    bool currentButtonState = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
+    bool xNow = master.get_digital(pros::E_CONTROLLER_DIGITAL_X);
 
+    if (xNow && !lastX) {
+      uint32_t now = pros::millis();
+      if (now - lastToggleMs >= cooldownMs) {
+        lastToggleMs = now;
+        fieldCentric = !fieldCentric;
 
-    // Only act when the button changes from not pressed to pressed (rising edge)
-    if (currentButtonState && !lastButtonState) {
-      fieldCentric = !fieldCentric;  // Toggle between field-centric and robot-centric
-      //master.rumble(fieldCentric ? "." : "..");
-    }
-    if (fieldCentric) {
-      // Field-centric drive code
-      // (This would involve transforming joystick inputs based on robot heading)
-      DriveControl();
-      master.clear_line(10);
-      master.print(10, 0, "Field-Centric");
-    } else {
-      // Robot-centric drive code
-      // (This would use joystick inputs directly)
-      DriveControlBackUp();
-      master.clear_line(10);
-      master.print(10, 0, "Robot-Centric");
+        master.clear_line(2);
+        master.print(2, 0, fieldCentric ? "Mode: Field" : "Mode: Robot");
+
+        // Optional haptic
+        master.rumble(fieldCentric ? "." : "..");
+      }
     }
 
-    // Update the last button state
-    lastButtonState = currentButtonState;
+    DriveControlUnified(fieldCentric);
 
-    pros::delay(20); // Small delay to prevent CPU overload
+    lastX = xNow;
+    pros::delay(10); // loop timing here, not inside the drive function
   }
 }
