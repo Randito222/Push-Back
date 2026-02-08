@@ -65,7 +65,7 @@ void soloAWP(){
 void RightSideAuton(){
   FrontIntake.move(127);  // Spin the intake 
 
-  turnToHeading_IMUPID(15, 50, 1500);
+  turnToHeading_IMUPID(15, 50, 1200);
 
   driveForward_EncoderPID(17, 15, 50, TURN_SPEED, 3000);
 
@@ -77,7 +77,7 @@ void RightSideAuton(){
 
   turnToHeading_IMUPID(90, 50, 1500);
 
-  driveForward_EncoderPID(31, 90, 50, TURN_SPEED, 3000);
+  driveForward_EncoderPID(32, 90, 50, TURN_SPEED, 3000);
 
   TongueMech.set_value(0);
 
@@ -89,7 +89,8 @@ void RightSideAuton(){
   pros::delay(1200);
   Arm.move_absolute(0, 130);
 
-  driveForward_EncoderPID(5, 180, 50, TURN_SPEED, 3000);
+
+  
 
 }
 
@@ -109,7 +110,7 @@ void LeftSideAuton(){
 
   turnToHeading_IMUPID(-95, 50, 1500);
 
-  driveForward_EncoderPID(36, -95, 50, TURN_SPEED, 3000);
+  driveForward_EncoderPID(32, -95, 50, TURN_SPEED, 3000);
 
   TongueMech.set_value(0);
 

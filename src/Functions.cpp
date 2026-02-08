@@ -1,4 +1,6 @@
+#include <math.h>
 #include "main.h"
+#include "pros/misc.h"
 #include "subsystems.hpp"
 /*
 
@@ -43,10 +45,19 @@ int slewDrive(int target, int current, int rate) {
     return current;
 }
 
+static double fcZeroRad = 0.0;
+static bool lastFC = false;
+
+static double wrapPi(double a){
+  while (a> M_PI) a-=2.0 *M_PI;
+  while (a < M_PI) a+=2.0 *M_PI;
+  return a;
+}
+
 void DriveControlUnified(bool fieldCentric) {
   // Persistent output (slew)
   static int flPower = 0, frPower = 0, blPower = 0, brPower = 0;
-  const int slewRate = 40;
+  const int slewRate = 50;
 
   // Controller input
   double forward = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y);
@@ -58,9 +69,19 @@ void DriveControlUnified(bool fieldCentric) {
   if (std::fabs(strafe)  < 5) strafe  = 0;
   if (std::fabs(rotate)  < 5) rotate  = 0;
 
+  if (fieldCentric && !lastFC) {
+    fcZeroRad = IMU.get_rotation() * M_PI / 180.0;
+  }
+  lastFC = fieldCentric;
+
+  if(master.get_digital_new_press(DIGITAL_A)){
+    fcZeroRad = IMU.get_rotation() * M_PI / 180.0;
+  }
+
   // Field-centric transform (field -> robot)
   if (fieldCentric) {
-    const double headingRad = IMU.get_rotation() * M_PI / 180.0;
+    double headingRad = IMU.get_rotation() * M_PI / 180.0;
+    headingRad = wrapPi(headingRad-fcZeroRad);
     const double c = std::cos(headingRad);
     const double s = std::sin(headingRad);
 
@@ -69,6 +90,9 @@ void DriveControlUnified(bool fieldCentric) {
 
     forward = tempForward;
     strafe  = tempStrafe;
+
+    if(std::fabs(forward) < 3) forward =0;
+    if(std::fabs(strafe) < 3) strafe =0;
   }
 
   // Mix
@@ -103,6 +127,8 @@ void DriveControlUnified(bool fieldCentric) {
   applySlew(brTarget, brPower);
 
   setDrivePower(flPower, frPower, blPower, brPower);
+
+  pros::delay(30);  // Small delay for stability
 }
 
 

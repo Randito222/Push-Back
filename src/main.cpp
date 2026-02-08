@@ -266,8 +266,7 @@ void opcontrol() {
     
     
     DriveControlUnified(true);  // Run the drive control function
-    
-    
+
     
 
     if(master.get_digital(DIGITAL_R2)) {
@@ -280,9 +279,6 @@ void opcontrol() {
       FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
     }
   
-
-
-
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
 }
