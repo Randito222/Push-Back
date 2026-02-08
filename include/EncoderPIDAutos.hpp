@@ -18,3 +18,10 @@ void driveStrafe_EncoderPID(double targetInches,
 
 // IMU-based turn PID (degrees)
 void turnToHeading_IMUPID(double targetDeg, int maxPower, int timeoutMs);
+
+void Drive_EncoderPID(double targetInchesY,
+                                         double targetInchesX,
+                                         double holdHeadingDeg,
+                                         int maxDrive,
+                                         int maxTurn,
+                                         int timeoutMs);

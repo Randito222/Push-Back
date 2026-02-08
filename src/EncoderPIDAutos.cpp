@@ -266,3 +266,108 @@ void turnToHeading_IMUPID(double targetDeg, int maxPower, int timeoutMs) {
 
   setDrivePower(0,0,0,0);
 }
+
+void Drive_EncoderPID(double targetInchesY,
+                                         double targetInchesX,
+                                         double holdHeadingDeg,
+                                         int maxDrive,
+                                         int maxTurn,
+                                         int timeoutMs) {
+  const double wheelDiamIn = 3.25;  // DRIVE wheel diameter
+  const double change = 1.0;
+
+  // Translation PID
+  const double Kp = 0.30;
+  const double Ki = 0.02;
+  const double Kd = 0.50;
+
+  // Heading hold PD (start small)
+  const double kP_h = 2.0;   // deg -> power
+  const double kD_h = 6.0;
+  const double MIN_T = 4.0;
+  const double headTolDeg = 2.0;
+
+  double errorY = 0, lastErrorY = 0;
+  double errorX = 0, LastErrorX = 0;
+  double integralY = 0, derivativeY = 0;
+  double integralX =0, derivativeX =0;
+
+  double lastHeadErr = 0;
+
+  const double integralActiveZoneDeg = inToDeg(15.0, wheelDiamIn);
+  const double integralPowerLimit = (Ki > 0.0) ? (40.0 / Ki) : 0.0;
+
+  const double exitThresholdDeg = inToDeg(0.5, wheelDiamIn);
+
+  resetDriveEncoders();
+  const uint32_t start = pros::millis();
+
+  const double targetDegY = inToDeg(targetInchesY * change, wheelDiamIn);
+  const double targetDegX = inToDeg(targetInchesX * change, wheelDiamIn);
+
+  while (true) {
+    if ((int)(pros::millis() - start) > timeoutMs) break;
+
+    // --- Translation error ---
+    const double posDegY = getDriveAvgDegForward();
+    const double posDegX = getDriveAvgDegStrafe();
+    errorY = targetDegY - posDegY;
+    errorX = targetDegX - posDegX;
+
+    // --- Heading error ---
+    const double curHeading = IMU.get_rotation();
+    const double headErr = wrapDeg(holdHeadingDeg - curHeading);
+
+    // Exit when close in distance AND close in heading
+    if (std::fabs(errorY) < exitThresholdDeg && std::fabs(errorX) < exitThresholdDeg && std::fabs(headErr) < headTolDeg) break;
+
+    // Integral active zone
+    if (std::fabs(errorY) < integralActiveZoneDeg && errorY != 0) integralY += errorY;
+    else integralY = 0;
+
+    if (std::fabs(errorX) < integralActiveZoneDeg && errorX != 0) integralX += errorX;
+    else integralX = 0;
+
+    if (Ki > 0.0) integralY = clampd(integralY, -integralPowerLimit, integralPowerLimit);
+    if (Ki > 0.0) integralX = clampd(integralX, -integralPowerLimit, integralPowerLimit);
+
+    derivativeY = errorY - lastErrorY;
+    lastErrorY = errorY;
+
+    derivativeX = errorX - LastErrorX;
+    LastErrorX = errorX;
+
+    // Translation output (y)
+    double yOut = (Kp * errorY) + (Ki * integralY) + (Kd * derivativeY);
+    yOut = clampd(yOut, -std::fabs((double)maxDrive), std::fabs((double)maxDrive));
+
+    // Heading output (r) - PD
+    double rOut = (kP_h * headErr) + (kD_h * (headErr - lastHeadErr));
+    lastHeadErr = headErr;
+
+    rOut = clampd(rOut, -std::fabs((double)maxTurn), std::fabs((double)maxTurn));
+    if (std::fabs(headErr) > headTolDeg && std::fabs(rOut) < MIN_T) rOut = (headErr > 0 ? MIN_T : -MIN_T);
+
+    // Strafe output (x)
+    double xOut = (Kp * errorX) + (Ki * integralX) + (Kd * derivativeX);
+    yOut = clampd(xOut, -std::fabs((double)maxDrive), std::fabs((double)maxDrive));
+
+    // X-drive mix
+    double fl = yOut + xOut + rOut;
+    double fr = yOut - xOut - rOut;
+    double bl = yOut - xOut + rOut;
+    double br = yOut + xOut - rOut;
+
+    // Normalize
+    const double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br), 127.0});
+    fl = fl * 127.0 / maxMag;
+    fr = fr * 127.0 / maxMag;
+    bl = bl * 127.0 / maxMag;
+    br = br * 127.0 / maxMag;
+
+    setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
+    pros::delay(20);
+  }
+
+  setDrivePower(0,0,0,0);
+}
