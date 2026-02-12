@@ -91,8 +91,8 @@ void DriveControlUnified(bool fieldCentric) {
     forward = tempForward;
     strafe  = tempStrafe;
 
-    if(std::fabs(forward) < 3) forward =0;
-    if(std::fabs(strafe) < 3) strafe =0;
+    if(std::fabs(forward) < 8) forward =0;
+    if(std::fabs(strafe) < 8) strafe =0;
   }
 
   // Mix
@@ -153,46 +153,57 @@ uint32_t yPressStart = 0;
 const uint32_t HOLD_TIME_MS = 1000;
 
 void descoring() {
-    bool yPressed = master.get_digital(DIGITAL_Y);
-
-    // =============================
-    // Button just pressed
-    // =============================
-    if (master.get_digital_new_press(DIGITAL_Y)) {
-        yPressStart = pros::millis();
-        holdingY = true;
-
-        // If both pistons are not yet extended, extend both
-        if (!bothExtended) {
-            Descore.set_value(1);
-            DescoreLift.set_value(1);
-            bothExtended = true;
-            descoreState = true;
-        }
-        // After first press, toggle ONLY descore
-        else {
-            descoreState = !descoreState;
-            Descore.set_value(descoreState);
-        }
+  if (master.get_digital_new_press(DIGITAL_Y)) {
+    holdingY = !holdingY;  // Toggle holding state
+    if(holdingY){
+      Descore.set_value(1);
+      DescoreLift.set_value(1);
     }
-
-    // Holding Y (check for reset)
-    if (holdingY && yPressed) {
-        if (pros::millis() - yPressStart >= HOLD_TIME_MS) {
-            // Retract both
-            Descore.set_value(0);
-            DescoreLift.set_value(0);
-
-            bothExtended = false;
-            descoreState = false;
-            holdingY = false;
-        }
+    else{
+      Descore.set_value(0);
+      DescoreLift.set_value(0);
     }
+  }
+    // bool yPressed = master.get_digital(DIGITAL_Y);
 
-    // Button released
-    if (!yPressed) {
-        holdingY = false;
-    }
+    // // =============================
+    // // Button just pressed
+    // // =============================
+    // if (master.get_digital_new_press(DIGITAL_Y)) {
+    //     yPressStart = pros::millis();
+    //     holdingY = true;
+
+    //     // If both pistons are not yet extended, extend both
+    //     if (!bothExtended) {
+    //         Descore.set_value(1);
+    //         DescoreLift.set_value(1);
+    //         bothExtended = true;
+    //         descoreState = true;
+    //     }
+    //     // After first press, toggle ONLY descore
+    //     else {
+    //         descoreState = !descoreState;
+    //         Descore.set_value(descoreState);
+    //     }
+    // }
+
+    // // Holding Y (check for reset)
+    // if (holdingY && yPressed) {
+    //     if (pros::millis() - yPressStart >= HOLD_TIME_MS) {
+    //         // Retract both
+    //         Descore.set_value(0);
+    //         DescoreLift.set_value(0);
+
+    //         bothExtended = false;
+    //         descoreState = false;
+    //         holdingY = false;
+    //     }
+    // }
+
+    // // Button released
+    // if (!yPressed) {
+    //     holdingY = false;
+    // }
 }
 
 

@@ -55,7 +55,7 @@ void default_constants() {
 }
 
 void AutonTesting(){
-  
+  driveForward_EncoderPID(24, 0, DRIVE_SPEED, TURN_SPEED, 3000);
   
 }
 
@@ -128,16 +128,39 @@ void LeftSideAuton(){
 
 
 void Skills(){
-  // Add auton code here
+  FrontIntake.move(127);  // Spin the intake 
 
-  // FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
-  // chassis.pid_drive_set(30, DRIVE_SPEED ); // Goes towards the preload area
-  // chassis.pid_wait();
+  turnToHeading_IMUPID(15, 50, 1000);
 
-  // chassis.pid_drive_set(-18, DRIVE_SPEED ); // Goes towards the preload area
-  // chassis.pid_wait();
+  driveForward_EncoderPID(17, 15, 50, TURN_SPEED, 2000);
 
-  // PID_Strafe(-80, 100);
-  // pros::delay(500);
-  // PID_Strafe(40,  100);
+  TongueMech.set_value(1);
+
+  driveForward_EncoderPID(22, 15, 50, TURN_SPEED, 3000);
+
+  driveForward_EncoderPID(-28, 15, 40, 50, 5000);
+
+  turnToHeading_IMUPID(90, 50, 1200);
+
+  driveForward_EncoderPID(33, 90, 50, TURN_SPEED, 3000);
+
+  turnToHeading_IMUPID(180, 50, 1200);
+
+  driveForward_EncoderPID(-25, 180, 50, TURN_SPEED, 2000);
+
+  Arm.move_absolute(-700, 170);
+  pros::delay(1200);
+  Arm.move_absolute(0, 200);
+  pros::delay(1000);
+  Arm.move_absolute(-700, 170);
+  Arm.move_absolute(0, 200);
+
+  turnToHeading_IMUPID(175, TURN_SPEED, 1000);
+
+  driveForward_EncoderPID(35, 175, 50, TURN_SPEED, 3000);
+  pros::delay(500);
+  driveForward_EncoderPID(-2, 175, 50, TURN_SPEED, 1000);
+  driveForward_EncoderPID(10, 175, 50, TURN_SPEED, 1200);
+
+
 }

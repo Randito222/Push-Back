@@ -52,95 +52,196 @@ static inline double wrapDeg(double a) {
   return a;
 }
 
+// ============================
+// Horizontal tracking wheel
+// ============================
+
+constexpr double H_WHEEL_DIAM_IN = 2.0;
+constexpr double H_WHEEL_CIRC_IN = M_PI * H_WHEEL_DIAM_IN;
+
+// Horizontal wheel offset from robot center
+// + if in FRONT of center, - if BEHIND center
+constexpr double H_OFFSET_IN = -3.0;
+
+// ============================
+// Helpers
+// ============================
+
+static inline double rotCentiDegToIn(double centiDeg) {
+  return (centiDeg / 100.0) / 360.0 * H_WHEEL_CIRC_IN;
+}
+
+static inline double getHorizontalIn() {
+  return rotCentiDegToIn((double)HorizontalTracker.get_position());
+}
+
+static inline void resetHorizontalTracker() {
+  HorizontalTracker.reset_position();
+  pros::delay(5);
+}
+
+
+// ============================
+// DRIVE FORWARD PID
+// ============================
+
 void driveForward_EncoderPID(double targetInches,
-                                         double holdHeadingDeg,
-                                         int maxDrive,
-                                         int maxTurn,
-                                         int timeoutMs) {
-  const double wheelDiamIn = 3.25;  // DRIVE wheel diameter
-  const double change = 1.0;
+                             double holdHeadingDeg,
+                             int maxDrive,
+                             int maxTurn,
+                             int timeoutMs) {
 
-  // Translation PID
-  const double Kp = 0.30;
-  const double Ki = 0.02;
-  const double Kd = 0.50;
+  const double wheelDiamIn = 3.25;
 
-  // Heading hold PD (start small)
-  const double kP_h = 2.0;   // deg -> power
+  // =============================
+  // Translation PID (tuned to reduce overshoot + back-up hunting)
+  // =============================
+  const double Kp = 0.24;
+  const double Ki = 0.0015;   // smaller I to reduce "push past target"
+  const double Kd = 0.70;     // more damping
+
+  // Only allow integral near the end (prevents windup)
+  const double integralActiveZoneDeg = inToDeg(6.0, wheelDiamIn);     // last 6 inches
+  const double integralLimit = (Ki > 0.0) ? (25.0 / Ki) : 0.0;        // ~25 power max from I
+
+  // Exit + settle (prevents "fly-by then reverse" oscillation)
+  const double exitThresholdDeg = inToDeg(0.5, wheelDiamIn);          // 0.5"
+  const double settlePosTolDeg  = inToDeg(0.6, wheelDiamIn);          // slightly looser than exit
+  const int    settleCyclesReq  = 8;                                  // 8*20ms = 160ms
+
+  // =============================
+  // Heading hold PD
+  // =============================
+  const double kP_h = 2.0;
   const double kD_h = 6.0;
   const double MIN_T = 4.0;
-  const double headTolDeg = 2.0;
+  const double headTolDeg = 1.0;
+
+  // =============================
+  // Strafe correction PD (horizontal tracker)
+  // =============================
+  const double kP_x = 7.0;     // enable later (start small like 6.0 if needed)
+  const double kD_x = 20.0;     // and 40-70 depending on wiggle
+  const double xMax = 45.0;
+  const double strafeDeadbandIn = 0.05;
 
   double error = 0, lastError = 0;
-  double integral = 0, derivative = 0;
-
+  double integral = 0;
   double lastHeadErr = 0;
+  double lastStrafeErr = 0;
 
-  const double integralActiveZoneDeg = inToDeg(15.0, wheelDiamIn);
-  const double integralPowerLimit = (Ki > 0.0) ? (40.0 / Ki) : 0.0;
-
-  const double exitThresholdDeg = inToDeg(0.5, wheelDiamIn);
+  int settleCount = 0;
 
   resetDriveEncoders();
+  resetHorizontalTracker();
+
   const uint32_t start = pros::millis();
 
-  const double targetDeg = inToDeg(targetInches * change, wheelDiamIn);
+  const double targetDeg = inToDeg(targetInches, wheelDiamIn);
+
+  const double startH = getHorizontalIn();
+  const double startHeadingDeg = IMU.get_rotation();
 
   while (true) {
+
     if ((int)(pros::millis() - start) > timeoutMs) break;
 
-    // --- Translation error ---
+    // =============================
+    // Translation error
+    // =============================
     const double posDeg = getDriveAvgDegForward();
     error = targetDeg - posDeg;
 
-    // --- Heading error ---
+    // =============================
+    // Heading hold
+    // =============================
     const double curHeading = IMU.get_rotation();
     const double headErr = wrapDeg(holdHeadingDeg - curHeading);
 
-    // Exit when close in distance AND close in heading
-    if (std::fabs(error) < exitThresholdDeg && std::fabs(headErr) < headTolDeg) break;
+    // Settle-based exit (reduces "overshoot then back up")
+    if (std::fabs(error) < settlePosTolDeg && std::fabs(headErr) < headTolDeg) settleCount++;
+    else settleCount = 0;
 
-    // Integral active zone
-    if (std::fabs(error) < integralActiveZoneDeg && error != 0) integral += error;
-    else integral = 0;
-    if (Ki > 0.0) integral = clampd(integral, -integralPowerLimit, integralPowerLimit);
+    if (settleCount >= settleCyclesReq) break;
 
-    derivative = error - lastError;
+    // =============================
+    // Integral gating + clamp (prevents windup)
+    // =============================
+    if (std::fabs(error) < integralActiveZoneDeg && std::fabs(error) > exitThresholdDeg) {
+      integral += error;
+    } else {
+      integral = 0;
+    }
+    if (Ki > 0.0) integral = clampd(integral, -integralLimit, integralLimit);
+
+    // Derivative
+    double derivative = error - lastError;
     lastError = error;
 
     // Translation output (y)
     double yOut = (Kp * error) + (Ki * integral) + (Kd * derivative);
     yOut = clampd(yOut, -std::fabs((double)maxDrive), std::fabs((double)maxDrive));
 
-    // Heading output (r) - PD
+    // Heading output (r)
     double rOut = (kP_h * headErr) + (kD_h * (headErr - lastHeadErr));
     lastHeadErr = headErr;
 
     rOut = clampd(rOut, -std::fabs((double)maxTurn), std::fabs((double)maxTurn));
-    if (std::fabs(headErr) > headTolDeg && std::fabs(rOut) < MIN_T) rOut = (headErr > 0 ? MIN_T : -MIN_T);
+    if (std::fabs(headErr) > headTolDeg && std::fabs(rOut) < MIN_T)
+      rOut = (headErr > 0 ? MIN_T : -MIN_T);
 
-    // No strafe
-    double xOut = 0;
+    // =============================
+    // Horizontal tracking correction
+    // =============================
+    const double hNow = getHorizontalIn();
+    const double headingChangeDeg = curHeading - startHeadingDeg;
+    const double headingChangeRad = headingChangeDeg * M_PI / 180.0;
 
+    // Remove rotation-induced motion
+    double correctedStrafe =
+        (hNow - startH) - (headingChangeRad * H_OFFSET_IN);
+
+    double strafeErr = -correctedStrafe;
+
+    double xOut =
+        (kP_x * strafeErr) +
+        (kD_x * (strafeErr - lastStrafeErr));
+
+    lastStrafeErr = strafeErr;
+
+    if (std::fabs(correctedStrafe) < strafeDeadbandIn) xOut = 0;
+    xOut = clampd(xOut, -xMax, xMax);
+
+    // =============================
     // X-drive mix
+    // =============================
     double fl = yOut + xOut + rOut;
     double fr = yOut - xOut - rOut;
     double bl = yOut - xOut + rOut;
     double br = yOut + xOut - rOut;
 
-    // Normalize
-    const double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br), 127.0});
-    fl = fl * 127.0 / maxMag;
-    fr = fr * 127.0 / maxMag;
-    bl = bl * 127.0 / maxMag;
-    br = br * 127.0 / maxMag;
+    double maxMag = std::max({std::fabs(fl),
+                              std::fabs(fr),
+                              std::fabs(bl),
+                              std::fabs(br)});
+
+    if (maxMag > 127.0) {
+      double scale = 127.0 / maxMag;
+      fl *= scale;
+      fr *= scale;
+      bl *= scale;
+      br *= scale;
+    }
 
     setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
+
     pros::delay(20);
   }
 
   setDrivePower(0,0,0,0);
 }
+
+
 
 
 void driveStrafe_EncoderPID(double targetInches,
