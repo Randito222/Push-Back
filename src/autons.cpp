@@ -130,23 +130,23 @@ void LeftSideAuton(){
 void Skills(){
   FrontIntake.move(127);  // Spin the intake 
 
-  turnToHeading_IMUPID(15, 50, 1000);
+  turnToHeading_IMUPID(25, 50, 1000);
 
-  driveForward_EncoderPID(17, 15, 50, TURN_SPEED, 2000);
+  driveForward_EncoderPID(20, 25, 50, TURN_SPEED, 2000);
 
   TongueMech.set_value(1);
 
-  driveForward_EncoderPID(22, 15, 50, TURN_SPEED, 3000);
+  driveForward_EncoderPID(22, 25, 50, TURN_SPEED, 3000);
 
-  driveForward_EncoderPID(-28, 15, 40, 50, 5000);
+  driveForward_EncoderPID(-35, 25, 40, 50, 5000);
 
   turnToHeading_IMUPID(90, 50, 1200);
 
-  driveForward_EncoderPID(33, 90, 50, TURN_SPEED, 3000);
+  driveForward_EncoderPID(29, 90, 50, TURN_SPEED, 3000);
 
   turnToHeading_IMUPID(180, 50, 1200);
 
-  driveForward_EncoderPID(-25, 180, 50, TURN_SPEED, 2000);
+  driveForward_EncoderPID(-27, 180, 50, TURN_SPEED, 2000);
 
   Arm.move_absolute(-700, 170);
   pros::delay(1200);
@@ -155,12 +155,25 @@ void Skills(){
   Arm.move_absolute(-700, 170);
   Arm.move_absolute(0, 200);
 
+  TongueMech.set_value(0);
+
+
   turnToHeading_IMUPID(175, TURN_SPEED, 1000);
 
   driveForward_EncoderPID(35, 175, 50, TURN_SPEED, 3000);
   pros::delay(500);
+
   driveForward_EncoderPID(-2, 175, 50, TURN_SPEED, 1000);
-  driveForward_EncoderPID(10, 175, 50, TURN_SPEED, 1200);
 
+  driveForward_EncoderPID(2, 175, 50, TURN_SPEED, 1200);
 
+  driveForward_EncoderPID(-20, 175, 50, TURN_SPEED, 2000);
+
+  turnToHeading_IMUPID(85, TURN_SPEED, 1000);
+
+  driveForward_EncoderPID(7, 85, 50, TURN_SPEED, 1200);
+
+  turnToHeading_IMUPID(0, TURN_SPEED, 1000);
+
+  driveForward_EncoderPID(70, 0, 50, TURN_SPEED, 1200);
 }
