@@ -55,7 +55,7 @@ void default_constants() {
 }
 
 void AutonTesting(){
-  driveForward_EncoderPID(24, 0, DRIVE_SPEED, TURN_SPEED, 3000);
+  
   
 }
 
@@ -163,4 +163,9 @@ void Skills(){
   driveForward_EncoderPID(10, 175, 50, TURN_SPEED, 1200);
 
 
+}
+
+void SkillsSafe(){
+  FrontIntake.move(-127);  // Spin the intake
+  chassis.pid_drive_set(35,DRIVE_SPEED);
 }

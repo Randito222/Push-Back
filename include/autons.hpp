@@ -8,3 +8,4 @@ void RightSideAuton();
 void LeftSideAuton();
 void OffParkAuton();
 void Skills();
+void SkillsSafe();

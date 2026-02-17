@@ -1,7 +1,20 @@
+#include "Functions.hpp"
 #include <math.h>
 #include "main.h"
 #include "pros/misc.h"
 #include "subsystems.hpp"
+
+void IntakeSpin() {
+  if(master.get_digital(DIGITAL_R2)) {
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+  }
+  else if(master.get_digital(DIGITAL_R1)) {
+    FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
+  } 
+  else{
+    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+  }
+}
 /*
 
 Drive Controls
@@ -49,8 +62,8 @@ static double fcZeroRad = 0.0;
 static bool lastFC = false;
 
 static double wrapPi(double a){
-  while (a> M_PI) a-=2.0 *M_PI;
-  while (a < M_PI) a+=2.0 *M_PI;
+  while (a >  M_PI) a -= 2.0 * M_PI;
+  while (a < -M_PI) a += 2.0 * M_PI;   // FIX: must be -M_PI here
   return a;
 }
 
@@ -64,24 +77,28 @@ void DriveControlUnified(bool fieldCentric) {
   double strafe  = master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X);
   double rotate  = master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X);
 
-  // Deadzones
+  // Deadzones (raw stick noise)
   if (std::fabs(forward) < 5) forward = 0;
   if (std::fabs(strafe)  < 5) strafe  = 0;
   if (std::fabs(rotate)  < 5) rotate  = 0;
 
+  // Capture initial zero when field-centric turns on
   if (fieldCentric && !lastFC) {
-    fcZeroRad = IMU.get_rotation() * M_PI / 180.0;
+    fcZeroRad = IMU.get_heading() * M_PI / 180.0;   // prefer heading for driver FC
   }
   lastFC = fieldCentric;
 
-  if(master.get_digital_new_press(DIGITAL_A)){
-    fcZeroRad = IMU.get_rotation() * M_PI / 180.0;
+  // Manual re-zero (still useful, but shouldn't be required often)
+  if (master.get_digital_new_press(DIGITAL_A)) {
+    fcZeroRad = IMU.get_heading() * M_PI / 180.0;
   }
 
   // Field-centric transform (field -> robot)
   if (fieldCentric) {
-    double headingRad = IMU.get_rotation() * M_PI / 180.0;
-    headingRad = wrapPi(headingRad-fcZeroRad);
+    // Use bounded heading for stability in driver control
+    double headingRad = IMU.get_heading() * M_PI / 180.0;
+    headingRad = wrapPi(headingRad - fcZeroRad);
+
     const double c = std::cos(headingRad);
     const double s = std::sin(headingRad);
 
@@ -91,8 +108,27 @@ void DriveControlUnified(bool fieldCentric) {
     forward = tempForward;
     strafe  = tempStrafe;
 
-    if(std::fabs(forward) < 8) forward =0;
-    if(std::fabs(strafe) < 8) strafe =0;
+    // Post-transform deadband (kills drift-induced tiny strafe)
+    if (std::fabs(forward) < 8) forward = 0;
+    if (std::fabs(strafe)  < 8) strafe  = 0;
+
+    // --- AUTO-DRIFT COMP (no manual reset needed most of the time) ---
+    // Only learn when driver is NOT rotating and is mostly pushing forward.
+    const double rotDeadband = 6;        // rotate stick deadband
+    const double learnRate   = 0.0008;   // rad per loop (tune 0.0004..0.0012)
+    const double minCmd      = 25;       // must be actually driving
+    const double fwdBias     = 2.0;      // "mostly forward" gate
+
+    bool driverRotating = (std::fabs(rotate) > rotDeadband);
+    bool driverDriving  = (std::fabs(forward) + std::fabs(strafe) > minCmd);
+    bool mostlyForward  = (std::fabs(forward) > std::fabs(strafe) * fwdBias);
+
+    if (!driverRotating && driverDriving && mostlyForward) {
+      // After transform, strafe should be ~0 for a straight push.
+      // Nudge zero to cancel persistent strafe caused by IMU bias drift.
+      fcZeroRad += (-strafe / 127.0) * learnRate;
+      fcZeroRad = wrapPi(fcZeroRad);
+    }
   }
 
   // Mix
@@ -101,7 +137,7 @@ void DriveControlUnified(bool fieldCentric) {
   double bl = forward - strafe + rotate;
   double br = forward + strafe - rotate;
 
-  // Normalize (IMPORTANT: do this for BOTH modes)
+  // Normalize
   double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br)});
   if (maxMag > 127.0) {
     const double scale = 127.0 / maxMag;
@@ -114,7 +150,7 @@ void DriveControlUnified(bool fieldCentric) {
   int blTarget = (int)bl;
   int brTarget = (int)br;
 
-  // Slew (diff-based = stable)
+  // Slew (diff-based)
   auto applySlew = [&](int target, int &current) {
     int diff = target - current;
     if (std::abs(diff) <= slewRate) current = target;
@@ -128,8 +164,9 @@ void DriveControlUnified(bool fieldCentric) {
 
   setDrivePower(flPower, frPower, blPower, brPower);
 
-  pros::delay(30);  // Small delay for stability
+  pros::delay(30);
 }
+
 
 
 

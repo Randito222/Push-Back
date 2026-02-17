@@ -20,7 +20,7 @@ ez::Drive chassis(
     {-14, 13, -12,11},     // Left Chassis Ports (negative port will reverse it!)
     {18, -17, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
 
-    2,      // IMU Port
+    6,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -260,24 +260,13 @@ void opcontrol() {
     IntakeLiftToggle();
     MatchLoading();
     descoring();
+    IntakeSpin();
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     //chassis.opcontrol_tank();
     
     
     DriveControlUnified(true);  // Run the drive control function
-
-    
-
-    if(master.get_digital(DIGITAL_R2)) {
-      FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    }
-    else if(master.get_digital(DIGITAL_R1)) {
-      FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
-    } 
-    else{
-      FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-    }
   
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
