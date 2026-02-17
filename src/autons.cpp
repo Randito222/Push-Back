@@ -142,7 +142,7 @@ void Skills(){
 
   turnToHeading_IMUPID(90, 50, 1200);
 
-  driveForward_EncoderPID(29, 90, 50, TURN_SPEED, 3000);
+  driveForward_EncoderPID(31, 90, 50, TURN_SPEED, 3000);
 
   turnToHeading_IMUPID(180, 50, 1200);
 
@@ -153,14 +153,17 @@ void Skills(){
   Arm.move_absolute(0, 200);
   pros::delay(1000);
   Arm.move_absolute(-700, 170);
+  pros::delay(1200);
   Arm.move_absolute(0, 200);
+  pros::delay(1000);
 
-  TongueMech.set_value(0);
+  TongueMech.set_value(1);
 
 
   turnToHeading_IMUPID(175, TURN_SPEED, 1000);
 
-  driveForward_EncoderPID(35, 175, 50, TURN_SPEED, 3000);
+  driveForward_EncoderPID(34, 175, 50, TURN_SPEED, 10000);
+
   pros::delay(500);
 
   driveForward_EncoderPID(-2, 175, 50, TURN_SPEED, 1000);
@@ -173,7 +176,51 @@ void Skills(){
 
   driveForward_EncoderPID(7, 85, 50, TURN_SPEED, 1200);
 
+  TongueMech.set_value(0);
+
   turnToHeading_IMUPID(0, TURN_SPEED, 1000);
 
-  driveForward_EncoderPID(70, 0, 50, TURN_SPEED, 1200);
+  driveForward_EncoderPID(80, 0, 50, TURN_SPEED, 6000);
+
+  turnToHeading_IMUPID(-90, TURN_SPEED, 1000);
+
+  driveForward_EncoderPID(9, -90, 50, TURN_SPEED, 4000);
+
+  turnToHeading_IMUPID(0, TURN_SPEED, 1000);
+
+  driveForward_EncoderPID(-12, 0, 50, TURN_SPEED, 4000);
+
+  Arm.move_absolute(-700, 170);
+  pros::delay(1200);
+  Arm.move_absolute(0, 200);
+  pros::delay(1000);
+  Arm.move_absolute(-700, 170);
+  pros::delay(1200);
+  Arm.move_absolute(0, 200);
+  pros::delay(1000);
+
+  TongueMech.set_value(1);
+
+
+  turnToHeading_IMUPID(0, TURN_SPEED, 1000);
+
+  driveForward_EncoderPID(34, 0, 50, TURN_SPEED, 10000);
+
+  pros::delay(500);
+
+  driveForward_EncoderPID(-2, 0, 50, TURN_SPEED, 1000);
+
+  driveForward_EncoderPID(2, 0, 50, TURN_SPEED, 1200);
+
+  driveForward_EncoderPID(-20, 0, 50, TURN_SPEED, 2000);
+
+  Arm.move_absolute(-700, 170);
+  pros::delay(1200);
+  Arm.move_absolute(0, 200);
+  pros::delay(1000);
+  Arm.move_absolute(-700, 170);
+  pros::delay(1200);
+  Arm.move_absolute(0, 200);
+  pros::delay(1000);
+
 }
