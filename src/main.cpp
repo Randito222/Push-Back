@@ -45,7 +45,11 @@ void initialize() {
   ez::ez_template_print();
   IMU.reset();  // Calibrate the IMU (Gyro)
   odomReset();
+  Descore.set_value(1);
   //Drive_Controls_task.resume(); // Start the drive control task
+
+  fcZeroRad = 0.0;
+  lastFC = true;
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
@@ -73,9 +77,10 @@ void initialize() {
   // Autonomous Selector using LLEMU
   ez::as::auton_selector.autons_add({
       {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
-      //  {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
-      //  {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
-      {"Skills\n\nAuton for Skills.", Skills},
+       {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
+       {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
+       {"Off the park\n\nAuton to get off the park.", OffParkAuton},
+      {"Skills\n\nAuton for Skills.", SkillsSafe},
    });
 
 
@@ -94,7 +99,7 @@ void initialize() {
  * the robot is enabled, this task will exit.
  */
 void disabled() {
-  // . . .
+  // . . 
 }
 
 /**
@@ -122,8 +127,8 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  //pros::Task Myodom(odomTask);
-  //resetOdom();
+  odomReset();
+  pros::Task Myodom(odomTask);
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
@@ -253,6 +258,7 @@ void opcontrol() {
   // This is preference to what you like to drive on
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
   
+   
 
   while (true) {
 
@@ -267,6 +273,7 @@ void opcontrol() {
     
     
     DriveControlUnified(true);  // Run the drive control function
+     
   
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }

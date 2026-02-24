@@ -105,14 +105,14 @@ void driveForward_EncoderPID(double targetInches,
   const double integralLimit = (Ki > 0.0) ? (25.0 / Ki) : 0.0;        // ~25 power max from I
 
   // Exit + settle (prevents "fly-by then reverse" oscillation)
-  const double exitThresholdDeg = inToDeg(0.5, wheelDiamIn);          // 0.5"
+  const double exitThresholdDeg = inToDeg(0.5, wheelDiamIn);         
   const double settlePosTolDeg  = inToDeg(0.6, wheelDiamIn);          // slightly looser than exit
   const int    settleCyclesReq  = 8;                                  // 8*20ms = 160ms
 
   // =============================
   // Heading hold PD
   // =============================
-  const double kP_h = 2.0;
+  const double kP_h = 2.0; 
   const double kD_h = 6.0;
   const double MIN_T = 4.0;
   const double headTolDeg = 1.0;
@@ -120,8 +120,8 @@ void driveForward_EncoderPID(double targetInches,
   // =============================
   // Strafe correction PD (horizontal tracker)
   // =============================
-  const double kP_x = 7.0;     // enable later (start small like 6.0 if needed)
-  const double kD_x = 20.0;     // and 40-70 depending on wiggle
+  const double kP_x = 20;     
+  const double kD_x = 0.0;    
   const double xMax = 45.0;
   const double strafeDeadbandIn = 0.05;
 
@@ -216,8 +216,8 @@ void driveForward_EncoderPID(double targetInches,
     // X-drive mix
     // =============================
     double fl = yOut + xOut + rOut;
-    double fr = yOut - xOut - rOut;
-    double bl = yOut - xOut + rOut;
+    double fr = yOut - xOut - rOut + 20;
+    double bl = yOut - xOut + rOut + 20;
     double br = yOut + xOut - rOut;
 
     double maxMag = std::max({std::fabs(fl),
@@ -471,4 +471,204 @@ void Drive_EncoderPID(double targetInchesY,
   }
 
   setDrivePower(0,0,0,0);
+}
+
+// =============================
+// Wheel geometry (inches)
+// =============================
+constexpr double VERT_DIAM_IN = 2.75;
+constexpr double HORZ_DIAM_IN = 2.00;
+
+// =============================
+// ODOM OFFSETS (inches)
+// =============================
+// Distance between L/R vertical trackers (used for wheel-based heading if you want it later)
+constexpr double TRACK_WIDTH_IN = 6.0;
+
+// =============================
+// Utility helpers
+// =============================
+
+static inline double centiDegToIn(double centiDeg, double wheelDiamIn) {
+  // Rotation sensor get_position() returns centidegrees (0.01 deg)
+  return (centiDeg / 100.0) / 360.0 * (M_PI * wheelDiamIn);
+}
+
+// LEFT vertical is flipped here (IMPORTANT)
+static inline double getLVerticalIn() {
+  return -centiDegToIn((double)LVerticalTracker.get_position(), VERT_DIAM_IN);
+}
+
+static inline double getRVerticalIn() {
+  return  centiDegToIn((double)RVerticalTracker.get_position(), VERT_DIAM_IN);
+}
+
+
+inline void resetTrackers() {
+  LVerticalTracker.reset();
+  RVerticalTracker.reset();
+  HorizontalTracker.reset();
+  pros::delay(5);
+}
+
+
+// =============================
+// DRIVE FORWARD (Tracking-wheel based) PID
+// Uses: L/R vertical for distance, IMU for heading, horizontal wheel for anti-drift
+// =============================
+void driveForward_EncoderPID2(double targetInches,
+                             double holdHeadingDeg,
+                             int maxDrive,
+                             int maxTurn,
+                             int timeoutMs) {
+
+  // -----------------------------
+  // Translation PID (INCHES)
+  // -----------------------------
+  const double Kp = 8.0;     // inches -> motor power
+  const double Ki = 0.02;
+  const double Kd = 25.0;
+
+  const double integralActiveZoneIn = 6.0;   // only integrate in last 6"
+  const double integralLimit = 40.0;         // cap I contribution
+
+  const double posTolIn = 0.5;               // stop within 0.5"
+
+  // -----------------------------
+  // Heading hold PD (IMU)
+  // -----------------------------
+  const double kP_h = 2.5;
+  const double kD_h = 6.0;
+  const double headTolDeg = 1.0;
+  const double MIN_T_MOVING = 6.0;           // minimum turn while driving
+
+  // -----------------------------
+  // Strafe hold PD (horizontal wheel)
+  // -----------------------------
+  const double kP_x = 8.0;
+  const double kD_x = 100.0;
+  const double xMax = 30.0;
+  const double strafeDeadbandIn = 0.01;
+
+  double strafeI = 0;
+  const double kI_x = 0.0;
+  const double strafeIActiveIn = 1.5;
+  const double strafeILimit = 10.0;
+
+  // -----------------------------
+  // Init
+  // -----------------------------
+  resetTrackers();
+
+
+  double error = 0, lastError = 0;
+  double integral = 0;
+
+  double lastHeadErr = 0;
+  double lastStrafeErr = 0;
+
+  const double startHeadingDeg = IMU.get_heading();
+  const double startH = getHorizontalIn();
+
+  const uint32_t startTime = pros::millis();
+
+  while (true) {
+    if ((int)(pros::millis() - startTime) > timeoutMs) break;
+
+    // =============================
+    // Forward distance from vertical tracking wheels
+    // =============================
+    const double forwardIn = (getLVerticalIn() + getRVerticalIn()) / 2.0;
+    error = targetInches - forwardIn;
+
+    // Exit
+    if (std::fabs(error) < posTolIn) break;
+
+    // Integral gating + clamp
+    if (std::fabs(error) < integralActiveZoneIn) integral += error;
+    else integral = 0;
+    integral = clampd(integral, -integralLimit, integralLimit);
+
+    // Derivative
+    const double derivative = error - lastError;
+    lastError = error;
+
+    // Translation output (y)
+    double yOut = (Kp * error) + (Ki * integral) + (Kd * derivative);
+    yOut = clampd(yOut, -(double)maxDrive, (double)maxDrive);
+
+    // =============================
+    // Heading hold (IMU)
+    // =============================
+    const double curHeading = IMU.get_heading();
+    const double headErr = wrapDeg(holdHeadingDeg - curHeading);
+
+    double rOut = (kP_h * headErr) + (kD_h * (headErr - lastHeadErr));
+    lastHeadErr = headErr;
+
+    // Scale heading correction slightly with forward speed
+    double speedScale = 0.5 + (std::fabs(yOut) / std::max(1.0, (double)maxDrive)) * 0.7;
+    rOut *= speedScale;
+
+    rOut = clampd(rOut, -(double)maxTurn, (double)maxTurn);
+
+    // Minimum turn while moving (beats pod friction)
+    if (std::fabs(headErr) > headTolDeg && std::fabs(yOut) > 20 && std::fabs(rOut) < MIN_T_MOVING) {
+      rOut = (headErr > 0 ? MIN_T_MOVING : -MIN_T_MOVING);
+    }
+
+    // =============================
+    // Horizontal anti-drift (strafe hold)
+    // =============================
+    const double hNow = getHorizontalIn();
+
+    const double headingChangeDeg = curHeading - startHeadingDeg;
+    const double headingChangeRad = headingChangeDeg * M_PI / 180.0;
+
+    // Remove rotation-induced horizontal wheel motion due to offset
+    const double correctedStrafe =
+      (hNow - startH) - (headingChangeRad * H_OFFSET_IN);
+
+    // Low-pass filter to reduce noise
+    static double filtStrafe = 0.0;
+    filtStrafe = 0.0;
+    const double alpha = 0.3;
+    filtStrafe = (alpha * correctedStrafe) + (1.0 - alpha) * filtStrafe;
+
+    const double strafeErr = -filtStrafe;
+
+    double xOut = (kP_x * strafeErr) + (kD_x * (strafeErr - lastStrafeErr));
+    lastStrafeErr = strafeErr;
+
+    // Use filtered value for deadband
+    if (std::fabs(filtStrafe) < strafeDeadbandIn) xOut = 0;
+
+    // Dynamic strafe authority (stronger at high speed)
+    double xMaxNow =
+        20.0 + 30.0 * (std::fabs(yOut) / std::max(1.0, (double)maxDrive)); // 20..50
+
+    // If you want a hard cap, keep this line. Otherwise delete it.
+    // xMaxNow = std::min(xMaxNow, xMax);
+
+    xOut = clampd(xOut, -xMaxNow, xMaxNow);
+
+    // =============================
+    // X-drive mix
+    // =============================
+    double fl = yOut + xOut + rOut;
+    double fr = yOut - xOut - rOut;
+    double bl = yOut - xOut + rOut;
+    double br = yOut + xOut - rOut;
+
+    double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br)});
+    if (maxMag > 127.0) {
+      double scale = 127.0 / maxMag;
+      fl *= scale; fr *= scale; bl *= scale; br *= scale;
+    }
+
+    setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
+    pros::delay(20);
+  }
+
+  setDrivePower(0, 0, 0, 0);
 }

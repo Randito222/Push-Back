@@ -61,6 +61,10 @@ void odomReset(double xIn, double yIn) {
   RVerticalTracker.reset_position();
   HorizontalTracker.reset_position();
 
+  LVerticalTracker.reset();
+  RVerticalTracker.reset();
+  HorizontalTracker.reset();
+
   IMU.tare_rotation();
   odomTheta = 0.0;
 }

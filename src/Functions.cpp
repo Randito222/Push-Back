@@ -23,17 +23,18 @@ Drive Controls
 
 void setDrivePower(int fl, int fr, int bl, int br) {
   // Set all motors for each wheel group
-  Front_Left_1.move(fl);
-  Front_Left_2.move(fl);
-
   Front_Right_1.move(fr);
   Front_Right_2.move(fr);
+
+  Back_Right_1.move(br);
+  Back_Right_2.move(br);
+
+  Front_Left_1.move(fl);
+  Front_Left_2.move(fl);
 
   Back_Left_1.move(bl);
   Back_Left_2.move(bl);
 
-  Back_Right_1.move(br);
-  Back_Right_2.move(br);
 } 
 
 // void IntakeSpin() {
@@ -57,9 +58,6 @@ int slewDrive(int target, int current, int rate) {
 
     return current;
 }
-
-static double fcZeroRad = 0.0;
-static bool lastFC = false;
 
 static double wrapPi(double a){
   while (a >  M_PI) a -= 2.0 * M_PI;
@@ -187,60 +185,49 @@ bool descoreState = false;    // current descore toggle state
 bool holdingY = false;
 
 uint32_t yPressStart = 0;
-const uint32_t HOLD_TIME_MS = 1000;
+const uint32_t HOLD_TIME_MS = 800;
 
 void descoring() {
-  if (master.get_digital_new_press(DIGITAL_Y)) {
-    holdingY = !holdingY;  // Toggle holding state
-    if(holdingY){
-      Descore.set_value(1);
-      DescoreLift.set_value(1);
+    bool yPressed = master.get_digital(DIGITAL_Y);
+
+    // =============================
+    // Button just pressed
+    // =============================
+    if (master.get_digital_new_press(DIGITAL_Y)) {
+        yPressStart = pros::millis();
+        holdingY = true;
+
+        // If both pistons are not yet extended, extend both
+        if (!bothExtended) {
+            Descore.set_value(0);
+            DescoreLift.set_value(0);
+            bothExtended = true;
+            descoreState = false;
+        }
+        // After first press, toggle ONLY descore
+        else {
+            descoreState = !descoreState;
+            DescoreLift.set_value(descoreState);
+        }
     }
-    else{
-      Descore.set_value(0);
-      DescoreLift.set_value(0);
+
+    // Holding Y (check for reset)
+    if (holdingY && yPressed) {
+        if (pros::millis() - yPressStart >= HOLD_TIME_MS) {
+            // Retract both
+            Descore.set_value(1);
+            DescoreLift.set_value(0);
+
+            bothExtended = false;
+            descoreState = false;
+            holdingY = false;
+        }
     }
-  }
-    // bool yPressed = master.get_digital(DIGITAL_Y);
 
-    // // =============================
-    // // Button just pressed
-    // // =============================
-    // if (master.get_digital_new_press(DIGITAL_Y)) {
-    //     yPressStart = pros::millis();
-    //     holdingY = true;
-
-    //     // If both pistons are not yet extended, extend both
-    //     if (!bothExtended) {
-    //         Descore.set_value(1);
-    //         DescoreLift.set_value(1);
-    //         bothExtended = true;
-    //         descoreState = true;
-    //     }
-    //     // After first press, toggle ONLY descore
-    //     else {
-    //         descoreState = !descoreState;
-    //         Descore.set_value(descoreState);
-    //     }
-    // }
-
-    // // Holding Y (check for reset)
-    // if (holdingY && yPressed) {
-    //     if (pros::millis() - yPressStart >= HOLD_TIME_MS) {
-    //         // Retract both
-    //         Descore.set_value(0);
-    //         DescoreLift.set_value(0);
-
-    //         bothExtended = false;
-    //         descoreState = false;
-    //         holdingY = false;
-    //     }
-    // }
-
-    // // Button released
-    // if (!yPressed) {
-    //     holdingY = false;
-    // }
+    // Button released
+    if (!yPressed) {
+        holdingY = false;
+    }
 }
 
 
@@ -275,14 +262,14 @@ void MatchLoading(){
 void ArmAction(){
   if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-590,200);  // Stop the intake motor when B is pressed
+    Arm.move_absolute(-590,140);  // Stop the intake motor when B is pressed
     KnownState=1;
     pros::delay(200);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
   }
   else if (master.get_digital(DIGITAL_L1) == true && (IntakeLiftT == -1 || IntakeLiftT == 0)){
     FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,200);  // Stop the intake motor when B is released
+    Arm.move_absolute(-570,140);  // Stop the intake motor when B is released
     pros::delay(500);
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
     Arm.move_absolute(5,200);  // Stop the intake motor when B is released
