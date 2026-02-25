@@ -505,9 +505,9 @@ static inline double getRVerticalIn() {
 
 
 inline void resetTrackers() {
-  LVerticalTracker.reset();
-  RVerticalTracker.reset();
-  HorizontalTracker.reset();
+  LVerticalTracker.reset_position();
+  RVerticalTracker.reset_position();
+  HorizontalTracker.reset_position();
   pros::delay(5);
 }
 
@@ -517,10 +517,10 @@ inline void resetTrackers() {
 // Uses: L/R vertical for distance, IMU for heading, horizontal wheel for anti-drift
 // =============================
 void driveForward_EncoderPID2(double targetInches,
-                             double holdHeadingDeg,
-                             int maxDrive,
-                             int maxTurn,
-                             int timeoutMs) {
+                              double holdHeadingDeg,
+                              int maxDrive,
+                              int maxTurn,
+                              int timeoutMs) {
 
   // -----------------------------
   // Translation PID (INCHES)
@@ -531,7 +531,6 @@ void driveForward_EncoderPID2(double targetInches,
 
   const double integralActiveZoneIn = 6.0;   // only integrate in last 6"
   const double integralLimit = 40.0;         // cap I contribution
-
   const double posTolIn = 0.5;               // stop within 0.5"
 
   // -----------------------------
@@ -545,21 +544,15 @@ void driveForward_EncoderPID2(double targetInches,
   // -----------------------------
   // Strafe hold PD (horizontal wheel)
   // -----------------------------
-  const double kP_x = 8.0;
+  const double kP_x = 50.0;
   const double kD_x = 100.0;
-  const double xMax = 30.0;
-  const double strafeDeadbandIn = 0.01;
-
-  double strafeI = 0;
-  const double kI_x = 0.0;
-  const double strafeIActiveIn = 1.5;
-  const double strafeILimit = 10.0;
+  const double strafeDeadbandIn = 0.12;      // IMPORTANT: don't use tiny values
+  // Dynamic clamp will be 20..50 based on speed, so no fixed xMax needed
 
   // -----------------------------
   // Init
   // -----------------------------
   resetTrackers();
-
 
   double error = 0, lastError = 0;
   double integral = 0;
@@ -567,10 +560,15 @@ void driveForward_EncoderPID2(double targetInches,
   double lastHeadErr = 0;
   double lastStrafeErr = 0;
 
+  // Use the SAME IMU source consistently
   const double startHeadingDeg = IMU.get_heading();
   const double startH = getHorizontalIn();
 
   const uint32_t startTime = pros::millis();
+
+  // Filter state MUST reset once per call (do NOT reset every loop)
+  static double filtStrafe = 0.0;
+  filtStrafe = 0.0;
 
   while (true) {
     if ((int)(pros::millis() - startTime) > timeoutMs) break;
@@ -629,9 +627,7 @@ void driveForward_EncoderPID2(double targetInches,
     const double correctedStrafe =
       (hNow - startH) - (headingChangeRad * H_OFFSET_IN);
 
-    // Low-pass filter to reduce noise
-    static double filtStrafe = 0.0;
-    filtStrafe = 0.0;
+    // Low-pass filter to reduce noise (works because filtStrafe is NOT reset each loop)
     const double alpha = 0.3;
     filtStrafe = (alpha * correctedStrafe) + (1.0 - alpha) * filtStrafe;
 
@@ -640,15 +636,15 @@ void driveForward_EncoderPID2(double targetInches,
     double xOut = (kP_x * strafeErr) + (kD_x * (strafeErr - lastStrafeErr));
     lastStrafeErr = strafeErr;
 
-    // Use filtered value for deadband
+    // Optional: ignore strafe correction for first 100ms (pods settling)
+    if (pros::millis() - startTime < 100) xOut = 0;
+
+    // Deadband uses filtered value
     if (std::fabs(filtStrafe) < strafeDeadbandIn) xOut = 0;
 
     // Dynamic strafe authority (stronger at high speed)
     double xMaxNow =
         20.0 + 30.0 * (std::fabs(yOut) / std::max(1.0, (double)maxDrive)); // 20..50
-
-    // If you want a hard cap, keep this line. Otherwise delete it.
-    // xMaxNow = std::min(xMaxNow, xMax);
 
     xOut = clampd(xOut, -xMaxNow, xMaxNow);
 

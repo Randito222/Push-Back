@@ -44,7 +44,6 @@ void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
   IMU.reset();  // Calibrate the IMU (Gyro)
-  odomReset();
   Descore.set_value(1);
   //Drive_Controls_task.resume(); // Start the drive control task
 
@@ -86,10 +85,11 @@ void initialize() {
 
 
   // Initialize chassis and auton selector
-  pros::Task OdomTask(odomTask);
+  odomReset();
   chassis.initialize();
   ez::as::initialize();
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
+  pros::Task OdomTask(odomTask);
   
 }
 
@@ -128,7 +128,6 @@ void competition_initialize() {
  */
 void autonomous() {
   odomReset();
-  pros::Task Myodom(odomTask);
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0

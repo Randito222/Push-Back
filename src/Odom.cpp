@@ -61,11 +61,11 @@ void odomReset(double xIn, double yIn) {
   RVerticalTracker.reset_position();
   HorizontalTracker.reset_position();
 
-  LVerticalTracker.reset();
-  RVerticalTracker.reset();
-  HorizontalTracker.reset();
+  // Only tare if IMU is ready
+  if (!IMU.is_calibrating()) {
+    IMU.tare_rotation();
+  }
 
-  IMU.tare_rotation();
   odomTheta = 0.0;
 }
 
