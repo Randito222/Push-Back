@@ -85,11 +85,11 @@ void initialize() {
 
 
   // Initialize chassis and auton selector
-  odomReset();
+  //odomReset();
   chassis.initialize();
   ez::as::initialize();
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
-  pros::Task OdomTask(odomTask);
+  //pros::Task OdomTask(odomTask);
   
 }
 
@@ -127,25 +127,13 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  odomReset();
+  //odomReset();
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
-  chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
+  //chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
 
-  /*
-  Odometry and Pure Pursuit are not magic
-
-  It is possible to get perfectly consistent results without tracking wheels,
-  but it is also possible to have extremely inconsistent results without tracking wheels.
-  When you don't use tracking wheels, you need to:
-   - avoid wheel slip
-   - avoid wheelies
-   - avoid throwing momentum around (super harsh turns, like in the example below)
-  You can do cool curved motions, but you have to give your robot the best chance
-  to be consistent
-  */
 
   ez::as::auton_selector.selected_auton_call();  // Calls selected auton from autonomous selector
 }

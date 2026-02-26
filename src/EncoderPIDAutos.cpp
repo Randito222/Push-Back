@@ -503,7 +503,6 @@ static inline double getRVerticalIn() {
   return  centiDegToIn((double)RVerticalTracker.get_position(), VERT_DIAM_IN);
 }
 
-
 inline void resetTrackers() {
   LVerticalTracker.reset_position();
   RVerticalTracker.reset_position();
@@ -523,15 +522,21 @@ void driveForward_EncoderPID2(double targetInches,
                               int timeoutMs) {
 
   // -----------------------------
+  // Optional scale (ONLY for distance calibration, not diagonal)
+  // -----------------------------
+  const double L_scale = 0.98;
+  const double R_scale = 1.00;
+
+  // -----------------------------
   // Translation PID (INCHES)
   // -----------------------------
-  const double Kp = 8.0;     // inches -> motor power
+  const double Kp = 8.0;
   const double Ki = 0.02;
   const double Kd = 25.0;
 
-  const double integralActiveZoneIn = 6.0;   // only integrate in last 6"
-  const double integralLimit = 40.0;         // cap I contribution
-  const double posTolIn = 0.5;               // stop within 0.5"
+  const double integralActiveZoneIn = 6.0;
+  const double integralLimit = 40.0;
+  const double posTolIn = 0.5;
 
   // -----------------------------
   // Heading hold PD (IMU)
@@ -539,19 +544,30 @@ void driveForward_EncoderPID2(double targetInches,
   const double kP_h = 2.5;
   const double kD_h = 6.0;
   const double headTolDeg = 1.0;
-  const double MIN_T_MOVING = 6.0;           // minimum turn while driving
+  const double MIN_T_MOVING = 6.0;
 
   // -----------------------------
   // Strafe hold PD (horizontal wheel)
+  // (FIX: calmer values; 30 was too aggressive and can cause diagonal snaps)
   // -----------------------------
-  const double kP_x = 50.0;
-  const double kD_x = 100.0;
-  const double strafeDeadbandIn = 0.12;      // IMPORTANT: don't use tiny values
-  // Dynamic clamp will be 20..50 based on speed, so no fixed xMax needed
+  const double kP_x = 10.0;
+  const double kD_x = 60.0;
+  const double strafeDeadbandIn = 0.10;
 
   // -----------------------------
-  // Init
+  // Per-loop pod balance (vertical mismatch -> rotate correction)
+  // (FIX: use diffStep, NOT cumulative LIn-RIn)
   // -----------------------------
+  const double balanceMinY = 15.0;     // only apply when moving
+  const double balanceK_step = 250.0;  // tune 150..450 (diffStep is tiny)
+
+  // -----------------------------
+  // Settle exit (prevents "ends diagonal")
+  // -----------------------------
+  const double strafeTolIn     = 0.25;
+  const int    settleCyclesReq = 8;
+  int settleCount = 0;
+
   resetTrackers();
 
   double error = 0, lastError = 0;
@@ -560,29 +576,52 @@ void driveForward_EncoderPID2(double targetInches,
   double lastHeadErr = 0;
   double lastStrafeErr = 0;
 
-  // Use the SAME IMU source consistently
   const double startHeadingDeg = IMU.get_heading();
   const double startH = getHorizontalIn();
 
   const uint32_t startTime = pros::millis();
 
-  // Filter state MUST reset once per call (do NOT reset every loop)
+  // Filter state resets once per call
   static double filtStrafe = 0.0;
   filtStrafe = 0.0;
 
+  // Per-loop baseline for balance (must reset once per call)
+  double lastLIn_step = getLVerticalIn() * L_scale;
+  double lastRIn_step = getRVerticalIn() * R_scale;
+
+  int lcdCounter = 0;
+
   while (true) {
-    if ((int)(pros::millis() - startTime) > timeoutMs) break;
+    const uint32_t now = pros::millis();
+    if ((int)(now - startTime) > timeoutMs) break;
 
     // =============================
     // Forward distance from vertical tracking wheels
     // =============================
-    const double forwardIn = (getLVerticalIn() + getRVerticalIn()) / 2.0;
+    const double LIn = getLVerticalIn() * L_scale;
+    const double RIn = getRVerticalIn() * R_scale;
+    const double forwardIn = (LIn + RIn) / 2.0;
     error = targetInches - forwardIn;
 
-    // Exit
-    if (std::fabs(error) < posTolIn) break;
+    // =============================
+    // Per-loop mismatch for pod-balance (stable)
+    // =============================
+    const double dL_step = LIn - lastLIn_step;
+    const double dR_step = RIn - lastRIn_step;
+    lastLIn_step = LIn;
+    lastRIn_step = RIn;
 
+    const double diffStep = (dL_step - dR_step); // + means left advanced more THIS LOOP
+
+    // =============================
+    // Heading hold (IMU)
+    // =============================
+    const double curHeading = IMU.get_heading();
+    const double headErr = wrapDeg(holdHeadingDeg - curHeading);
+
+    // =============================
     // Integral gating + clamp
+    // =============================
     if (std::fabs(error) < integralActiveZoneIn) integral += error;
     else integral = 0;
     integral = clampd(integral, -integralLimit, integralLimit);
@@ -596,17 +635,28 @@ void driveForward_EncoderPID2(double targetInches,
     yOut = clampd(yOut, -(double)maxDrive, (double)maxDrive);
 
     // =============================
-    // Heading hold (IMU)
+    // Heading output (r)
     // =============================
-    const double curHeading = IMU.get_heading();
-    const double headErr = wrapDeg(holdHeadingDeg - curHeading);
-
     double rOut = (kP_h * headErr) + (kD_h * (headErr - lastHeadErr));
     lastHeadErr = headErr;
 
     // Scale heading correction slightly with forward speed
     double speedScale = 0.5 + (std::fabs(yOut) / std::max(1.0, (double)maxDrive)) * 0.7;
     rOut *= speedScale;
+
+    // -----------------------------
+    // POD BALANCE (per-loop) — prevents diagonal from friction mismatch
+    // -----------------------------
+    if (std::fabs(yOut) > balanceMinY) {
+      double balanceOut = balanceK_step * diffStep;
+
+      // reduce balance near the end so it doesn't twist while stopping
+      if (std::fabs(error) < 3.0) balanceOut *= 0.3;
+
+      // If it gets worse, flip sign on this line:
+      rOut -= balanceOut;
+      // rOut += balanceOut;
+    }
 
     rOut = clampd(rOut, -(double)maxTurn, (double)maxTurn);
 
@@ -627,7 +677,7 @@ void driveForward_EncoderPID2(double targetInches,
     const double correctedStrafe =
       (hNow - startH) - (headingChangeRad * H_OFFSET_IN);
 
-    // Low-pass filter to reduce noise (works because filtStrafe is NOT reset each loop)
+    // Low-pass filter to reduce noise
     const double alpha = 0.3;
     filtStrafe = (alpha * correctedStrafe) + (1.0 - alpha) * filtStrafe;
 
@@ -636,8 +686,8 @@ void driveForward_EncoderPID2(double targetInches,
     double xOut = (kP_x * strafeErr) + (kD_x * (strafeErr - lastStrafeErr));
     lastStrafeErr = strafeErr;
 
-    // Optional: ignore strafe correction for first 100ms (pods settling)
-    if (pros::millis() - startTime < 100) xOut = 0;
+    // Ignore strafe correction briefly (pods settling / wheel contact)
+    if (now - startTime < 100) xOut = 0;
 
     // Deadband uses filtered value
     if (std::fabs(filtStrafe) < strafeDeadbandIn) xOut = 0;
@@ -645,8 +695,33 @@ void driveForward_EncoderPID2(double targetInches,
     // Dynamic strafe authority (stronger at high speed)
     double xMaxNow =
         20.0 + 30.0 * (std::fabs(yOut) / std::max(1.0, (double)maxDrive)); // 20..50
-
     xOut = clampd(xOut, -xMaxNow, xMaxNow);
+
+    // =============================
+    // Settle-based exit (distance + heading + strafe)
+    // =============================
+    const bool posOK    = (std::fabs(error) < posTolIn);
+    const bool headOK   = (std::fabs(headErr) < headTolDeg);
+    const bool strafeOK = (std::fabs(filtStrafe) < strafeTolIn);
+
+    if (posOK && headOK && strafeOK) settleCount++;
+    else settleCount = 0;
+
+    if (settleCount >= settleCyclesReq) break;
+
+    // =============================
+    // PID DEBUG PRINT (Brain LCD)
+    // =============================
+    if (++lcdCounter >= 5) { // ~100ms
+      lcdCounter = 0;
+
+      pros::lcd::print(0, "Fwd:%.2f Err:%.2f", forwardIn, error);
+      pros::lcd::print(1, "Head:%.1f E:%.1f", curHeading, headErr);
+      pros::lcd::print(2, "Str:%.2f Xerr:%.2f", filtStrafe, strafeErr);
+      pros::lcd::print(3, "Y:%.0f X:%.0f R:%.0f", yOut, xOut, rOut);
+      pros::lcd::print(4, "L:%.2f R:%.2f dS:%.3f", LIn, RIn, diffStep);
+      pros::lcd::print(5, "Set:%d t:%dms", settleCount, (int)(now - startTime));
+    }
 
     // =============================
     // X-drive mix
@@ -667,4 +742,5 @@ void driveForward_EncoderPID2(double targetInches,
   }
 
   setDrivePower(0, 0, 0, 0);
+  pros::lcd::print(5, "DONE err=%.2f set=%d", error, settleCount);
 }

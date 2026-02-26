@@ -26,6 +26,18 @@ double odomY = 0.0;
 double odomTheta = 0.0;
 
 // =============================
+// RESET LATCH (prevents delta spikes when trackers reset elsewhere)
+// =============================
+// If you reset Rotation sensors in another thread/function (auton PID, etc.),
+// odomTask can see a huge "jump" for one cycle. This latch lets odomTask
+// re-baseline cleanly before computing deltas.
+static volatile bool gOdomResetLatch = false;
+
+static inline void odomLatchResetRequest() {
+  gOdomResetLatch = true;
+}
+
+// =============================
 // Helpers
 // =============================
 static inline double wrapPi(double a) {
@@ -38,7 +50,7 @@ static inline double degToRad(double d) {
   return d * M_PI / 180.0;
 }
 
-// Rotation sensor returns degrees. Convert deg -> inches for wheel travel.
+// Rotation sensor returns hundredths of a degree. Convert deg -> inches for wheel travel.
 static inline double degToIn(double deg, double wheelDiamIn) {
   return (deg / 36000.0) * (M_PI * wheelDiamIn);
 }
@@ -53,7 +65,13 @@ static int SIGN_LV = +1;
 static int SIGN_RV = +1;
 static int SIGN_H  = +1;
 
+// OPTIONAL: expose this if you want to call it from other files
+// void odomRequestLatchReset() { odomLatchResetRequest(); }
+
 void odomReset(double xIn, double yIn) {
+  // Request latch BEFORE resetting sensors so odomTask doesn't compute a bad delta
+  odomLatchResetRequest();
+
   odomX = xIn;
   odomY = yIn;
 
@@ -66,7 +84,8 @@ void odomReset(double xIn, double yIn) {
     IMU.tare_rotation();
   }
 
-  odomTheta = 0.0;
+  // Re-baseline theta to current IMU after tare (or current value if no tare)
+  odomTheta = wrapPi(degToRad(IMU.get_rotation()));
 }
 
 void odomTask() {
@@ -76,9 +95,10 @@ void odomTask() {
   // Wait for IMU calibration
   while (IMU.is_calibrating()) pros::delay(10);
 
-  double lastLdeg = LVerticalTracker.get_position();
-  double lastRdeg = RVerticalTracker.get_position();
-  double lastHdeg = HorizontalTracker.get_position();
+  // Initialize with the SAME sign convention used in the loop
+  double lastLdeg = -LVerticalTracker.get_position();
+  double lastRdeg =  RVerticalTracker.get_position();
+  double lastHdeg =  HorizontalTracker.get_position();
 
   double lastHeadingRad = wrapPi(degToRad(IMU.get_rotation()));
   odomTheta = lastHeadingRad;
@@ -86,10 +106,28 @@ void odomTask() {
   const int loopMs = 10;
 
   while (true) {
+
+    // =============================
+    // RESET LATCH HANDLING
+    // =============================
+    if (gOdomResetLatch) {
+      // Re-sample baselines AFTER the reset so next deltas are ~0
+      lastLdeg = -LVerticalTracker.get_position();
+      lastRdeg =  RVerticalTracker.get_position();
+      lastHdeg =  HorizontalTracker.get_position();
+
+      lastHeadingRad = wrapPi(degToRad(IMU.get_rotation()));
+      odomTheta = lastHeadingRad;
+
+      gOdomResetLatch = false;
+      pros::delay(loopMs);
+      continue;
+    }
+
     // --- Wheel positions (deg) ---
     const double Ldeg = -LVerticalTracker.get_position();
-    const double Rdeg = RVerticalTracker.get_position();
-    const double Hdeg = HorizontalTracker.get_position();
+    const double Rdeg =  RVerticalTracker.get_position();
+    const double Hdeg =  HorizontalTracker.get_position();
 
     // --- Delta inches (apply sign) ---
     const double dL = SIGN_LV * degToIn(Ldeg - lastLdeg, VERT_DIAM_IN);
@@ -127,7 +165,6 @@ void odomTask() {
     // =============================
     // Slip / sanity checks + warnings
     // =============================
-    // Tune these thresholds to your robot
     constexpr double MAX_STEP_IN   = 3.0;   // inches per 10ms -> likely glitch
     constexpr double MAX_STEP_RAD  = 0.6;   // rad per 10ms (~34 deg) -> likely glitch
 
@@ -135,10 +172,9 @@ void odomTask() {
     constexpr double TURN_DX_MAX   = 1.0;   // allowed dx while turning (in/step)
     constexpr double TURN_DY_MAX   = 1.0;   // allowed dy while turning (in/step)
 
-    constexpr double VERT_MISMATCH_IN = 1.0;     // |dL - dR| too big when not turning
-    constexpr double IMU_WHEEL_DTHETA_WARN = 0.08; // rad disagreement per step (~4.6 deg)
+    constexpr double VERT_MISMATCH_IN = 1.0;        // |dL - dR| too big when not turning
+    constexpr double IMU_WHEEL_DTHETA_WARN = 0.08;  // rad disagreement per step (~4.6 deg)
 
-    // Rate-limit warnings so you don't spam
     static int warnCooldown = 0;
     if (warnCooldown > 0) warnCooldown -= loopMs;
 
@@ -155,7 +191,6 @@ void odomTask() {
       (std::fabs(dTheta) > TURN_ONLY_RAD) &&
       (std::fabs(dx) > TURN_DX_MAX || std::fabs(dy) > TURN_DY_MAX);
 
-    // Optional: compare wheel-based turn vs IMU turn (sanity check TRACK_WIDTH_IN)
     double dThetaWheels = 0.0;
     if (TRACK_WIDTH_IN > 0.1) {
       dThetaWheels = (dR - dL) / TRACK_WIDTH_IN; // approx rad
@@ -166,7 +201,7 @@ void odomTask() {
       (std::fabs(dTheta - dThetaWheels) > IMU_WHEEL_DTHETA_WARN);
 
     if (warnCooldown <= 0 && (spike || vertMismatch || turnDrift || turnDisagree)) {
-      warnCooldown = 250; // ms between warning bursts
+      warnCooldown = 250;
 
       if (spike) {
         printf("[WARN] ODOM spike: dL=%.2f dR=%.2f dH=%.2f dTh=%.3f\n", dL, dR, dH, dTheta);
@@ -182,12 +217,11 @@ void odomTask() {
                dTheta, dThetaWheels);
       }
 
-      // Optional short indicator on brain LCD line 5
       pros::lcd::print(5, "ODOM WARN");
     }
 
     // --- Brain LCD every ~200ms ---
-    if (++lcdCounter >= 20) {   // 20 * 10ms = 200ms
+    if (++lcdCounter >= 20) {
       lcdCounter = 0;
       pros::lcd::print(0, "X: %.2f in", odomX);
       pros::lcd::print(1, "Y: %.2f in", odomY);
@@ -195,7 +229,7 @@ void odomTask() {
     }
 
     // --- USB terminal every ~500ms ---
-    if (++usbCounter >= 50) {   // 50 * 10ms = 500ms
+    if (++usbCounter >= 50) {
       usbCounter = 0;
       printf("[ODOM] X=%.2f  Y=%.2f  H=%.1f\n",
              odomX, odomY, odomTheta * 180.0 / M_PI);
@@ -204,4 +238,3 @@ void odomTask() {
     pros::delay(loopMs);
   }
 }
-
