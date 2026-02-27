@@ -34,6 +34,11 @@ static inline double wrapDeg(double a) {
 static inline double deg2rad(double deg) { return deg * M_PI / 180.0; }
 static inline double sgn(double v) { return (v > 0) - (v < 0); }
 
+// =============================
+// DRIVE TO POINT (ODOM X/Y TARGETS) — X-DRIVE
+// Uses: odomX/odomY/odomTheta from pros::Task odomTask()
+// IMPORTANT: This version assumes odomTheta is NEGATIVE (as in your odomTask)
+// =============================
 void driveToPoint_XDrive_PID(
     double targetX,
     double targetY,
@@ -47,21 +52,18 @@ void driveToPoint_XDrive_PID(
   // -----------------------------
   // GAINS (start points)
   // -----------------------------
-  // Translation PD (inches -> power)
   const double kP_xy = 6.0;
-  const double kD_xy = 18.0;   // derivative is "per-loop change", not /dt
+  const double kD_xy = 18.0;   // per-loop derivative (no /dt)
 
-  // Heading PD (radians -> power)
-  // NOTE: We run heading in radians for consistency with odomTheta.
-  const double kP_h = 35.0;
-  const double kD_h = 120.0;
+  const double kP_h  = 35.0;   // heading PD runs in radians
+  const double kD_h  = 120.0;
 
   // -----------------------------
   // TOLERANCES + SETTLE
   // -----------------------------
-  const double posTolIn   = 1.0;              // inches to target
-  const double headTolRad = deg2rad(2.0);     // radians
-  const int    settleReq  = 10;               // 10 * loopMs (~200ms)
+  const double posTolIn   = 1.0;          // inches
+  const double headTolRad = deg2rad(2.0); // radians
+  const int    settleReq  = 10;           // 10 * 20ms = ~200ms
 
   // -----------------------------
   // FRICTION / MIN OUTPUTS
@@ -76,12 +78,10 @@ void driveToPoint_XDrive_PID(
   const int    minDriveNear = 12;  // keep some authority even near target
 
   // -----------------------------
-  // ARC REDUCTION (prevents "curve to line")
+  // ARC REDUCTION
   // -----------------------------
-  // If you're far from the point, reduce heading power so translation can "snap"
-  // then heading cleans up near the end.
-  const double ARC_CROSS_IN = 1.0;    // inches
-  const double ARC_H_MAX    = 12.0;   // cap heading output while correcting cross-track
+  const double ARC_CROSS_IN = 1.0;   // inches
+  const double ARC_H_MAX    = 12.0;  // cap heading output while cross-track large
 
   // -----------------------------
   // LOOP TIMING
@@ -95,7 +95,8 @@ void driveToPoint_XDrive_PID(
   int settleCount = 0;
   int lcdCounter  = 0;
 
-  const double targetH = -wrapPi(deg2rad(targetHeadingDeg));
+  // Target heading must match NEGATIVE-odomTheta convention
+  const double targetH = wrapPi(-deg2rad(targetHeadingDeg));
 
   while (true) {
     const uint32_t now = pros::millis();
@@ -104,21 +105,24 @@ void driveToPoint_XDrive_PID(
     // Current pose from odomTask
     const double cx = odomX;
     const double cy = odomY;
-    const double ch = odomTheta; // radians
+    const double ch = odomTheta; // radians (NEGATIVE convention)
 
     // Field-frame error to target
     const double fxErr = targetX - cx;
     const double fyErr = targetY - cy;
     const double dist  = std::hypot(fxErr, fyErr);
 
-    // Convert FIELD error into ROBOT frame using odomTheta
+    // Convert FIELD error into ROBOT frame using NEGATIVE theta convention
     // robot X = strafe right, robot Y = forward
     const double c = std::cos(ch);
     const double s = std::sin(ch);
 
-    const double xErr =  fxErr * c + fyErr * s;   // strafe error (in)
-    const double yErr = -fxErr * s + fyErr * c;   // forward error (in)
-    const double hErr = wrapPi(targetH - ch);     // heading error (rad)
+    // ✅ FIX: correct FIELD->ROBOT for NEGATIVE odomTheta
+    const double xErr =  fxErr * c - fyErr * s;  // strafe error (in)
+    const double yErr =  fxErr * s + fyErr * c;  // forward error (in)
+
+    // Heading error in radians (also consistent with negative convention)
+    const double hErr = wrapPi(targetH - ch);
 
     // -----------------------------
     // Settle-based exit
@@ -169,7 +173,7 @@ void driveToPoint_XDrive_PID(
       hOut = clampd(hOut, -ARC_H_MAX, ARC_H_MAX);
     }
 
-    // Minimum turn (only if you actually want heading correction)
+    // Minimum turn
     if (std::fabs(hErr) > headTolRad && std::fabs(hOut) < MIN_T) hOut = sgn(hErr) * MIN_T;
 
     // -----------------------------
@@ -190,7 +194,7 @@ void driveToPoint_XDrive_PID(
     setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
 
     // -----------------------------
-    // Debug (Brain LCD + optional USB)
+    // Debug (Brain LCD)
     // -----------------------------
     if (++lcdCounter >= 5) { // every ~100ms
       lcdCounter = 0;
@@ -200,8 +204,6 @@ void driveToPoint_XDrive_PID(
       pros::lcd::print(3, "y:%.0f x:%.0f r:%.0f", yOut, xOut, hOut);
       pros::lcd::print(4, "dyn:%d set:%d", dynMaxDrive, settleCount);
       pros::lcd::print(5, "t:%dms", (int)(now - start));
-      // printf("[TP] x=%.2f y=%.2f h=%.1f  eX=%.2f eY=%.2f d=%.2f  outY=%.1f outX=%.1f outH=%.1f\n",
-      //        cx, cy, ch*180/M_PI, xErr, yErr, dist, yOut, xOut, hOut);
     }
 
     pros::delay(loopMs);

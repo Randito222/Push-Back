@@ -67,7 +67,6 @@ static int SIGN_H  = +1;
 
 
 void odomReset(double xIn, double yIn) {
-  // Request latch BEFORE resetting sensors so odomTask doesn't compute a bad delta
   odomLatchResetRequest();
 
   odomX = xIn;
@@ -77,13 +76,9 @@ void odomReset(double xIn, double yIn) {
   RVerticalTracker.reset_position();
   HorizontalTracker.reset_position();
 
-  // Only tare if IMU is ready
-  if (!IMU.is_calibrating()) {
-    IMU.tare_rotation();
-  }
+  //IMU.reset();
 
-  // Re-baseline theta to current IMU after tare (or current value if no tare)
-  odomTheta = wrapPi(degToRad(IMU.get_rotation()));
+  odomTheta = -wrapPi(degToRad(IMU.get_rotation()));
 }
 
 void odomTask() {
