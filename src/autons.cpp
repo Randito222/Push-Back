@@ -55,8 +55,8 @@ void default_constants() {
 }
 
 void AutonTesting(){
-  driveForward_EncoderPID2(42, 0, DRIVE_SPEED, 50, 5000);
-  
+  //driveForward_EncoderPID2(42, 0, DRIVE_SPEED, TURN_SPEED, 10000);
+  driveToPoint_XDrive_PID(0,30,0);
 
   
 }

@@ -85,11 +85,11 @@ void initialize() {
 
 
   // Initialize chassis and auton selector
-  //odomReset();
   chassis.initialize();
   ez::as::initialize();
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
-  //pros::Task OdomTask(odomTask);
+  pros::Task OdomTask(odomTask);
+  odomReset(0,0);
   
 }
 
@@ -127,7 +127,7 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  //odomReset();
+  odomReset(0,0);
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
