@@ -6,6 +6,7 @@ void AutonTesting();
 void soloAWP();
 void RightSideAuton();
 void LeftSideAuton();
+void RightElimsAuton();
 void OffParkAuton();
 void Skills();
 void SkillsSafe();

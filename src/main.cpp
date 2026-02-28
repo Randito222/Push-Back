@@ -76,9 +76,10 @@ void initialize() {
   // Autonomous Selector using LLEMU
   ez::as::auton_selector.autons_add({
       {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
-       {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
-       {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
-       {"Off the park\n\nAuton to get off the park.", OffParkAuton},
+      {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
+      {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
+      {"Right Elims Auton\n\nAuton for right side elims.", RightElimsAuton},
+      {"Off the park\n\nAuton to get off the park.", OffParkAuton},
       {"Skills\n\nAuton for Skills.", SkillsSafe},
    });
 

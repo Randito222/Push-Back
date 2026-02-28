@@ -1,6 +1,7 @@
 #include "autons.hpp"
 #include "EZ-Template/drive/drive.hpp"
 #include "EncoderPIDAutos.hpp"
+#include "XDriveAutos.hpp"
 #include "main.h"
 #include "pros/motors.h"
 #include "subsystems.hpp"
@@ -55,8 +56,8 @@ void default_constants() {
 }
 
 void AutonTesting(){
-  //driveForward_EncoderPID2(42, 0, DRIVE_SPEED, TURN_SPEED, 10000);
-  driveToPoint_XDrive_PID(0,30,0);
+  driveToPoint_XDrive_PID(0, 20, 0,110,90,2000);
+  
 
   
 }
@@ -65,37 +66,32 @@ void soloAWP(){
 }
 
 void RightSideAuton(){
-  FrontIntake.move(127);  // Spin the intake 
+  FrontIntake.move(127);  // Spin the intake
+  driveToPoint_XDrive_PID(12,15,0,127,127,2000); // Goes to the three balls near the center
+  TongueMech.set_value(1); //Brings the tongue out to hold the balls
+  pros::delay(500);
 
-  turnToHeading_IMUPID(24, TURN_SPEED, 800);
+  driveToPoint_XDrive_PID(12,25,0,127,127,2000); // Goes foward to intake the balls
+  TongueMech.set_value(0); // Brings the tongue back up
 
-  driveForward_EncoderPID(23, 24, 100, TURN_SPEED, 1500);
+  driveToPoint_XDrive_PID(6, 28, -45, 127, 127, 1000); // Goes to lower goal
+  FrontIntake.move(-127); // Spit the balls out into lower goal
+  pros::delay(1000);
+  FrontIntake.move(127); // Spin the intake back on
 
-  TongueMech.set_value(1);
+  driveToPoint_XDrive_PID(40, 2, -180, 127, 127, 4000); // Goes to lower goal
+  TongueMech.set_value(1); //Brings the tongue out to get balls out
 
-  driveForward_EncoderPID(21, 20, 50, TURN_SPEED, 2000);
+  driveToPoint_XDrive_PID(40, -6, -180, 127, 127, 800); // Goes to match loader
+  pros::delay(1000); //waits for the match loader to load the balls
 
-  driveForward_EncoderPID(-36, 20, DRIVE_SPEED, 50, 2000);
-
-  turnToHeading_IMUPID(90, TURN_SPEED, 1200);
-
-  driveForward_EncoderPID2(35, 90, 85, TURN_SPEED, 3500);
-
-  turnToHeading_IMUPID(180, TURN_SPEED, 1200);
-
-  driveForward_EncoderPID(-25, 180, 60, TURN_SPEED, 2000);
-
-  TongueMech.set_value(0);
-
-  Arm.move_absolute(-700, 170);
-  pros::delay(1200);
+  driveToPoint_XDrive_PID(40,10, -182, 127, 127, 1000); // Goes to long goal
+  
+  Arm.move_absolute(-700, 200);
+  pros::delay(1000);
   Arm.move_absolute(0, 200);
 
-  driveForward_EncoderPID(12, 0,DRIVE_SPEED, TURN_SPEED, 3000);
-
-  // TongueMech.set_value(1);
-
-  // driveForward_EncoderPID(50, 180, 80, TURN_SPEED, 5000);
+  driveToPoint_XDrive_PID(40,1, 0, 127, 127, 2000); // Gets ready to wing
 
 
   
@@ -132,6 +128,33 @@ void LeftSideAuton(){
 
   driveForward_EncoderPID(5, 180, 50, TURN_SPEED, 3000);
 
+}
+
+void RightElimsAuton(){
+  FrontIntake.move(127);  // Spin the intake
+  driveToPoint_XDrive_PID(12,15,0,127,127,2000); // Goes to the three balls near the center
+  TongueMech.set_value(1); //Brings the tongue out to hold the balls
+  pros::delay(500);
+
+  driveToPoint_XDrive_PID(12,25,0,127,127,2000); // Goes foward to intake the balls
+  TongueMech.set_value(0); // Brings the tongue back up
+
+  driveToPoint_XDrive_PID(6, 28, -45, 127, 127, 1000); // Goes to lower goal
+
+  driveToPoint_XDrive_PID(40, 2, -180, 127, 127, 4000); // Goes to lower goal
+  TongueMech.set_value(1); //Brings the tongue out to get balls out
+  
+  driveToPoint_XDrive_PID(40,10, -182, 127, 127, 1000); // Goes to long goal
+  
+  Arm.move_absolute(-700, 200);
+  pros::delay(1000);
+  Arm.move_absolute(0, 200);
+  
+  driveToPoint_XDrive_PID(40,1, 0, 127, 127, 2000); // Gets ready to wing
+}
+
+void OffParkAuton(){
+  driveStrafe_EncoderPID(-5, 0, 50, 50, 3000);
 }
 
 
@@ -232,10 +255,6 @@ void Skills(){
   pros::delay(1000);
 
 
-}
-
-void OffParkAuton(){
-  driveStrafe_EncoderPID(-5, 0, 50, 50, 3000);
 }
 
 void SkillsSafe(){

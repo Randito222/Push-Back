@@ -249,17 +249,4 @@ void turnToHeading_PID(double targetDeg, int maxTurn, int timeoutMs) {
   setDrivePower(0,0,0,0);
 }
 
-void driveFieldInches(
-    double northIn,          // + = north (+Y), - = south
-    double eastIn,           // + = east (+X),  - = west
-    double holdHeadingDeg,   // keep facing this heading while moving
-    int maxDrive,
-    int maxTurn,
-    int timeoutMs
-) {
-  const double targetX = odomX + eastIn;
-  const double targetY = odomY + northIn;
-
-  driveToPoint_XDrive_PID(targetX, targetY, holdHeadingDeg, maxDrive, maxTurn, timeoutMs);
-}
 
