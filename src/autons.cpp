@@ -56,7 +56,7 @@ void default_constants() {
 }
 
 void AutonTesting(){
-  driveToPoint_XDrive_PID(0, 20, 0,110,90,2000);
+
   
 
   
@@ -67,31 +67,36 @@ void soloAWP(){
 
 void RightSideAuton(){
   FrontIntake.move(127);  // Spin the intake
-  driveToPoint_XDrive_PID(12,15,0,127,127,2000); // Goes to the three balls near the center
+  driveToPoint_XDrive_PID(10,15,0,127,127,1300); // Goes to the three balls near the center
   TongueMech.set_value(1); //Brings the tongue out to hold the balls
-  pros::delay(500);
+  pros::delay(200);
 
-  driveToPoint_XDrive_PID(12,25,0,127,127,2000); // Goes foward to intake the balls
+  driveToPoint_XDrive_PID(10,30,0,127,127,2000); // Goes foward to intake the balls
   TongueMech.set_value(0); // Brings the tongue back up
 
-  driveToPoint_XDrive_PID(6, 28, -45, 127, 127, 1000); // Goes to lower goal
+  driveToPoint_XDrive_PID(2, 33, 0, 127, 127, 1000); // Goes to lower goal
+  turnToHeading_IMUPID(-55, 127, 500);
   FrontIntake.move(-127); // Spit the balls out into lower goal
-  pros::delay(1000);
+  pros::delay(2000);
   FrontIntake.move(127); // Spin the intake back on
 
-  driveToPoint_XDrive_PID(40, 2, -180, 127, 127, 4000); // Goes to lower goal
+  driveToPoint_XDrive_PID(20, 2, 0, 127, 127, 1500); // Goes to lower goal
+  driveToPoint_XDrive_PID(38, 2, 0, 110, 127, 1200); // Goes to lower goal
+  turnToHeading_IMUPID(-180, 127, 1000);
   TongueMech.set_value(1); //Brings the tongue out to get balls out
 
-  driveToPoint_XDrive_PID(40, -6, -180, 127, 127, 800); // Goes to match loader
+  driveToPoint_XDrive_PID(38, -8, -182, 127, 127, 800); // Goes to match loader
   pros::delay(1000); //waits for the match loader to load the balls
 
-  driveToPoint_XDrive_PID(40,10, -182, 127, 127, 1000); // Goes to long goal
-  
+  driveToPoint_XDrive_PID(37,33, -180, 127, 127, 1500); // Goes to long goal
+
+  FrontIntake.move(-127);
   Arm.move_absolute(-700, 200);
   pros::delay(1000);
   Arm.move_absolute(0, 200);
 
-  driveToPoint_XDrive_PID(40,1, 0, 127, 127, 2000); // Gets ready to wing
+  driveToPoint_XDrive_PID(35,1, -180, 127, 127, 2000); // Gets ready to wing
+  turnToHeading_IMUPID(0, 127, 1000);
 
 
   
