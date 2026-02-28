@@ -48,110 +48,168 @@ void driveToPoint_XDrive_PID(
     int timeoutMs
 ) {
   const uint32_t start = pros::millis();
-
-  // -----------------------------
-  // GAINS (start points)
-  // -----------------------------
-  const double kP_xy = 6.0;
-  const double kD_xy = 18.0;   // per-loop derivative (no /dt)
-
-  const double kP_h  = 35.0;   // heading PD runs in radians
-  const double kD_h  = 120.0;
-
-  // -----------------------------
-  // TOLERANCES + SETTLE
-  // -----------------------------
-  const double posTolIn   = 1.0;          // inches
-  const double headTolRad = deg2rad(2.0); // radians
-  const int    settleReq  = 10;           // 10 * 20ms = ~200ms
-
-  // -----------------------------
-  // FRICTION / MIN OUTPUTS
-  // -----------------------------
-  const double MIN_XY = 10.0;  // minimum translation power when error exists
-  const double MIN_T  = 4.0;   // minimum turn power when error exists
-
-  // -----------------------------
-  // DYNAMIC LIMITS (distance-based)
-  // -----------------------------
-  const double kSlow = 6.0;        // dist*6 => allowable power
-  const int    minDriveNear = 12;  // keep some authority even near target
-
-  // -----------------------------
-  // ARC REDUCTION
-  // -----------------------------
-  const double ARC_CROSS_IN = 1.0;   // inches
-  const double ARC_H_MAX    = 12.0;  // cap heading output while cross-track large
-
-  // -----------------------------
-  // LOOP TIMING
-  // -----------------------------
   const int loopMs = 20;
 
-  // -----------------------------
+  // =============================
+  // GAINS
+  // =============================
+  const double kP_y = 7.0;
+  const double kD_y = 18.0;
+
+  const double kP_x = 32.0;
+  const double kD_x = 140.0;
+  const double kI_x = 0.45;
+
+  const double kP_h = 2.4;
+  const double kD_h = 9.0;
+
+  // =============================
+  // TOLERANCES + SETTLE
+  // =============================
+  const double posTolIn    = 1.0;
+  const double headTolDeg  = 2.0;
+  const int    settleReq   = 10;
+
+  // =============================
+  // FRICTION MIN OUTPUTS
+  // =============================
+  const double MIN_XY = 10.0;
+  const double MIN_T  = 7.0;
+
+  // =============================
+  // I-ZONE / ANTI-WINDUP for X lock
+  // =============================
+  const double xIZoneIn     = 6.0;
+  const double xIMax        = 80.0;
+
+  // =============================
+  // DYNAMIC LIMITS (distance-based)
+  // =============================
+  const double kSlow = 6.0;
+  const int minDriveNear = 12;
+
+  // =============================
+  // ARC REDUCTION
+  // =============================
+  const double ARC_CROSS_IN = 0.75;
+  const double ARC_H_MAX    = 10.0;
+
+  // =============================
+  // EARLY SNAP (threshold + boost + kick)
+  // =============================
+  const double X_SNAP_IN     = 1.0;
+  const double X_SNAP_BOOST  = 1.12;
+  const int    X_KICK_LOOPS  = 3;
+  const double X_KICK_PWR    = 10.0;
+
+  // =============================
+  // ANTI-OSCILLATION ADDITIONS
+  // =============================
+  const double X_DEADBAND_IN = 0.35;  // 0.25..0.5: stops hunting near the line
+  const double Y_CLOSE_IN    = 4.0;   // when |yErr| < this, reduce x authority
+  const double X_NEAR_SCALE  = 0.60;  // 0.5..0.8
+
+  // =============================
   // STATE
-  // -----------------------------
-  double lastXErr = 0.0, lastYErr = 0.0, lastHErr = 0.0;
+  // =============================
+  double lastYErr = 0.0;
+  double lastXLineErr = 0.0;
+  double lastHErr = 0.0;
+
+  double xI = 0.0;
+
   int settleCount = 0;
   int lcdCounter  = 0;
 
-  // Target heading must match NEGATIVE-odomTheta convention
-  const double targetH = wrapPi(-deg2rad(targetHeadingDeg));
+  int xKick = 0;
+
+  // for "kick only on threshold crossing"
+  bool wasOverSnap = false;
 
   while (true) {
     const uint32_t now = pros::millis();
     if ((int)(now - start) > timeoutMs) break;
 
-    // Current pose from odomTask
+    // Current pose
     const double cx = odomX;
     const double cy = odomY;
-    const double ch = odomTheta; // radians (NEGATIVE convention)
+    const double ch = wrapPi(odomTheta);
 
-    // Field-frame error to target
+    // Field error
     const double fxErr = targetX - cx;
     const double fyErr = targetY - cy;
     const double dist  = std::hypot(fxErr, fyErr);
 
-    // Convert FIELD error into ROBOT frame using NEGATIVE theta convention
-    // robot X = strafe right, robot Y = forward
+    // Field -> Robot (inverse rotation)
     const double c = std::cos(ch);
     const double s = std::sin(ch);
 
-    // ✅ FIX: correct FIELD->ROBOT for NEGATIVE odomTheta
-    const double xErr =  fxErr * c - fyErr * s;  // strafe error (in)
-    const double yErr =  fxErr * s + fyErr * c;  // forward error (in)
+    const double xErr =  fxErr * c + fyErr * s;
+    const double yErr = -fxErr * s + fyErr * c;
 
-    // Heading error in radians (also consistent with negative convention)
-    const double hErr = wrapPi(targetH - ch);
+    // X line lock (field X)
+    const double xLineErrRaw = targetX - cx;
 
-    // -----------------------------
-    // Settle-based exit
-    // -----------------------------
+    // ✅ DEAD-BAND so it doesn't hunt around x=targetX
+    double xLineErr = xLineErrRaw;
+    if (std::fabs(xLineErr) < X_DEADBAND_IN) xLineErr = 0.0;
+
+    const double xLineRobot = xLineErr * std::cos(ch);
+
+    // Early snap trigger + kick ONLY on threshold crossing
+    double xGainMul = 1.0;
+    const bool overSnap = (std::fabs(xLineErrRaw) > X_SNAP_IN);
+
+    if (overSnap) xGainMul = X_SNAP_BOOST;
+
+    // kick only when we cross from <=1" to >1"
+    if (overSnap && !wasOverSnap) {
+      xKick = X_KICK_LOOPS;
+    }
+    wasOverSnap = overSnap;
+
+    // Heading error (deg)
+    const double curDeg = IMU.get_rotation();
+    const double hErr   = wrapDeg(targetHeadingDeg - curDeg);
+
+    // Exit gates
     const bool posOK  = (dist < posTolIn);
-    const bool headOK = (std::fabs(hErr) < headTolRad);
+    const bool headOK = (std::fabs(hErr) < headTolDeg);
 
     if (posOK && headOK) settleCount++;
     else settleCount = 0;
 
     if (settleCount >= settleReq) break;
 
-    // -----------------------------
-    // Derivatives (per-loop difference)
-    // -----------------------------
-    const double dxErr = (xErr - lastXErr);
-    const double dyErr = (yErr - lastYErr);
-    const double dhErr = (hErr - lastHErr);
+    // Derivatives
+    const double dyErr  = (yErr - lastYErr);
+    const double dxLine = (xLineRobot - lastXLineErr);
+    const double dhErr  = (hErr - lastHErr);
 
-    lastXErr = xErr;
-    lastYErr = yErr;
-    lastHErr = hErr;
+    lastYErr     = yErr;
+    lastXLineErr = xLineRobot;
+    lastHErr     = hErr;
 
-    // -----------------------------
+    // X integral (I-zone) - use RAW error for I-zone check but integrate DB value
+    if (std::fabs(xLineErrRaw) < xIZoneIn) {
+      xI += xLineRobot;
+      xI = clampd(xI, -xIMax, xIMax);
+    } else {
+      xI = 0.0;
+    }
+
     // Outputs
-    // -----------------------------
-    double xOut = kP_xy * xErr + kD_xy * dxErr;
-    double yOut = kP_xy * yErr + kD_xy * dyErr;
-    double hOut = kP_h  * hErr + kD_h  * dhErr;
+    double yOut = kP_y * yErr + kD_y * dyErr;
+
+    double xOut = xGainMul * (kP_x * xLineRobot + kD_x * dxLine + kI_x * xI);
+
+    // Kick pulse
+    if (xKick > 0) {
+      xOut += sgn(xLineRobot) * X_KICK_PWR;
+      xKick--;
+    }
+
+    double hOut = kP_h * hErr + kD_h * dhErr;
 
     // Dynamic translation limit
     const int dynMaxDrive =
@@ -160,31 +218,37 @@ void driveToPoint_XDrive_PID(
         std::max<double>(minDriveNear, dist * kSlow)
       ));
 
+    // ✅ PRIORITY: let Y finish near the end (reduces “stuck yErr ~2”)
+    if (std::fabs(yErr) < Y_CLOSE_IN) {
+      xOut *= X_NEAR_SCALE;
+    }
+
     xOut = clampd(xOut, -dynMaxDrive, dynMaxDrive);
     yOut = clampd(yOut, -dynMaxDrive, dynMaxDrive);
     hOut = clampd(hOut, -(double)maxTurn, (double)maxTurn);
 
-    // Minimum translation power (beats friction)
-    if (std::fabs(xErr) > posTolIn && std::fabs(xOut) < MIN_XY) xOut = sgn(xErr) * MIN_XY;
-    if (std::fabs(yErr) > posTolIn && std::fabs(yOut) < MIN_XY) yOut = sgn(yErr) * MIN_XY;
+    // Minimum translation power
+    if (std::fabs(xLineErrRaw) > posTolIn && std::fabs(xOut) < MIN_XY)
+      xOut = sgn(xOut == 0 ? xLineRobot : xOut) * MIN_XY;
 
-    // Arc reduction: when cross-track is big, don't let heading “steer” you into an arc
-    if (std::fabs(xErr) > ARC_CROSS_IN) {
+    if (std::fabs(yErr) > posTolIn && std::fabs(yOut) < MIN_XY)
+      yOut = sgn(yErr) * MIN_XY;
+
+    // Arc reduction
+    if (std::fabs(xLineErrRaw) > ARC_CROSS_IN) {
       hOut = clampd(hOut, -ARC_H_MAX, ARC_H_MAX);
     }
 
     // Minimum turn
-    if (std::fabs(hErr) > headTolRad && std::fabs(hOut) < MIN_T) hOut = sgn(hErr) * MIN_T;
+    if (std::fabs(hErr) > headTolDeg && std::fabs(hOut) < MIN_T)
+      hOut = sgn(hErr) * MIN_T;
 
-    // -----------------------------
     // Mix (X-drive)
-    // -----------------------------
     double fl = yOut + xOut + hOut;
     double fr = yOut - xOut - hOut;
     double bl = yOut - xOut + hOut;
     double br = yOut + xOut - hOut;
 
-    // Normalize properly (keep <= 127)
     double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br)});
     if (maxMag > 127.0) {
       const double sc = 127.0 / maxMag;
@@ -193,17 +257,15 @@ void driveToPoint_XDrive_PID(
 
     setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
 
-    // -----------------------------
-    // Debug (Brain LCD)
-    // -----------------------------
-    if (++lcdCounter >= 5) { // every ~100ms
+    // Debug
+    if (++lcdCounter >= 5) {
       lcdCounter = 0;
       pros::lcd::print(0, "T(%.1f,%.1f) d:%.2f", targetX, targetY, dist);
-      pros::lcd::print(1, "eX:%.2f eY:%.2f", xErr, yErr);
-      pros::lcd::print(2, "h:%.1f e:%.2f", ch * 180.0 / M_PI, hErr * 180.0 / M_PI);
+      pros::lcd::print(1, "xRaw:%.2f xDB:%.2f", xLineErrRaw, xLineErr);
+      pros::lcd::print(2, "yErr:%.2f h:%.1f eH:%.2f", yErr, curDeg, hErr);
       pros::lcd::print(3, "y:%.0f x:%.0f r:%.0f", yOut, xOut, hOut);
       pros::lcd::print(4, "dyn:%d set:%d", dynMaxDrive, settleCount);
-      pros::lcd::print(5, "t:%dms", (int)(now - start));
+      pros::lcd::print(5, "kick:%d mul:%.2f", xKick, xGainMul);
     }
 
     pros::delay(loopMs);
@@ -215,8 +277,8 @@ void driveToPoint_XDrive_PID(
 void turnToHeading_PID(double targetDeg, int maxTurn, int timeoutMs) {
   const uint32_t start = pros::millis();
 
-  const double kP = 2.2;
-  const double kD = 8.0;
+  const double kP = 2.4;
+  const double kD = 9.0;
 
   const double tol = 1.5;
   const double MIN_T = 7.0;
@@ -225,28 +287,32 @@ void turnToHeading_PID(double targetDeg, int maxTurn, int timeoutMs) {
   const double dt = loopMs / 1000.0;
 
   double lastErr = 0;
+  int settle = 0;
 
   while (true) {
     if ((int)(pros::millis() - start) > timeoutMs) break;
 
-    const double cur = IMU.get_rotation();
-    const double err = wrapDeg(targetDeg - cur);
+    double cur = IMU.get_rotation();
+    double err = wrapDeg(targetDeg - cur);
 
-    if (std::fabs(err) < tol) break;
+    if (fabs(err) < tol) settle++;
+    else settle = 0;
+
+    if (settle >= 6) break;
 
     double out = kP * err + kD * (err - lastErr) / dt;
     lastErr = err;
 
     out = clampd(out, -maxTurn, maxTurn);
 
-    if (std::fabs(out) > 1 && std::fabs(err) > tol)
-      out = sgn(out) * std::max(std::fabs(out), MIN_T);
+    if (fabs(err) > tol && fabs(out) < MIN_T)
+      out = sgn(err) * MIN_T;
 
+    // CCW positive
     setDrivePower((int)out, (int)-out, (int)out, (int)-out);
+
     pros::delay(loopMs);
   }
 
   setDrivePower(0,0,0,0);
 }
-
-
