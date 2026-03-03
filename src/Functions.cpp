@@ -11,8 +11,25 @@ void IntakeSpin() {
   else if(master.get_digital(DIGITAL_R1)) {
     FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
   } 
+  else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-590,130);  // Stop the intake motor when B is pressed
+    // KnownState=1;
+  }
+  else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
+    FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
+    Arm.move_absolute(-700,120);  // Stop the intake motor when B is pressed
+    KnownState=1;
+  }
+  else if (master.get_digital(DIGITAL_B) == false && KnownState == 1){ 
+    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
+    KnownState=0;
+    pros::delay(200);
+
+  }
   else{
     FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
   }
 }
 /*
@@ -262,17 +279,17 @@ void MatchLoading(){
 void ArmAction(){
   if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-590,140);  // Stop the intake motor when B is pressed
-    KnownState=1;
+    Arm.move_absolute(-590,200);  // Stop the intake motor when B is pressed
+    // KnownState=1;
   }
-  else if (master.get_digital(DIGITAL_L1) == true && (IntakeLiftT == -1 || IntakeLiftT == 0)){
-    FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-570,140);  // Stop the intake motor when B is released
-    pros::delay(500);
-    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
+  // else if (master.get_digital(DIGITAL_L1) == true && (IntakeLiftT == -1 || IntakeLiftT == 0)){
+  //   FrontIntake.move(-127);  // Spin the intake motor when R1 is pressed
+  //   Arm.move_absolute(-570,140);  // Stop the intake motor when B is released
+  //   pros::delay(500);
+  //   FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+  //   Arm.move_absolute(5,200);  // Stop the intake motor when B is released
   
-  }
+  // }
   else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
     Arm.move_absolute(-700,120);  // Stop the intake motor when B is pressed
@@ -285,6 +302,6 @@ void ArmAction(){
 
   }
   else {
-    FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
+    Arm.move_absolute(5,200);  // Stop the intake motor when B is released
   }
 }

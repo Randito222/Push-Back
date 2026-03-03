@@ -85,8 +85,8 @@ void odomTask() {
   int lcdCounter = 0;
   int usbCounter = 0;
 
-  // Wait for IMU calibration
-  while (IMU.is_calibrating()) pros::delay(10);
+  // // Wait for IMU calibration
+  // while (IMU.is_calibrating()) pros::delay(10);
 
   // Initialize with the SAME sign convention used in the loop
   double lastLdeg = -LVerticalTracker.get_position();
@@ -96,7 +96,7 @@ void odomTask() {
   double lastHeadingRad = wrapPi(degToRad(IMU.get_rotation()));
   odomTheta = lastHeadingRad;
 
-  const int loopMs = 10;
+  const int loopMs = 15;
 
   // Helper clamp (local)
   auto clampd_local = [](double v, double lo, double hi) {
