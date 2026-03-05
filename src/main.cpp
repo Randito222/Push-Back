@@ -75,7 +75,7 @@ void initialize() {
 
   // Autonomous Selector using LLEMU
   ez::as::auton_selector.autons_add({
-      //{"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
       {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
       {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
       {"Right Elims Auton\n\nAuton for right side elims.", RightElimsAuton},
@@ -90,6 +90,9 @@ void initialize() {
   ez::as::initialize();
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
   pros::Task OdomTask2(odomTask);
+
+
+
   odomReset(0,0);
   
 }

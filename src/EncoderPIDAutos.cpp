@@ -473,43 +473,6 @@ void Drive_EncoderPID(double targetInchesY,
   setDrivePower(0,0,0,0);
 }
 
-// =============================
-// Wheel geometry (inches)
-// =============================
-constexpr double VERT_DIAM_IN = 2.75;
-constexpr double HORZ_DIAM_IN = 2.00;
-
-// =============================
-// ODOM OFFSETS (inches)
-// =============================
-// Distance between L/R vertical trackers (used for wheel-based heading if you want it later)
-constexpr double TRACK_WIDTH_IN = 6.0;
-
-// =============================
-// Utility helpers
-// =============================
-
-static inline double centiDegToIn(double centiDeg, double wheelDiamIn) {
-  // Rotation sensor get_position() returns centidegrees (0.01 deg)
-  return (centiDeg / 100.0) / 360.0 * (M_PI * wheelDiamIn);
-}
-
-// LEFT vertical is flipped here (IMPORTANT)
-static inline double getLVerticalIn() {
-  return -centiDegToIn((double)LVerticalTracker.get_position(), VERT_DIAM_IN);
-}
-
-static inline double getRVerticalIn() {
-  return  centiDegToIn((double)RVerticalTracker.get_position(), VERT_DIAM_IN);
-}
-
-inline void resetTrackers() {
-  LVerticalTracker.reset_position();
-  RVerticalTracker.reset_position();
-  HorizontalTracker.reset_position();
-  pros::delay(5);
-}
-
 
 // =============================
 // DRIVE FORWARD (ODOM-TASK based) PID
@@ -517,141 +480,126 @@ inline void resetTrackers() {
 // Goal: go straight on the start line, auto-correct any sideways drift,
 // and NOT finish to the right (stronger correction near the end).
 // =============================
-void driveForward_EncoderPID2(double targetInches,
-                              double holdHeadingDeg,
-                              int maxDrive,
-                              int maxTurn,
-                              int timeoutMs) {
 
-  // -----------------------------
-  // GAINS (start here)
-  // -----------------------------
-  // Along-track (inches -> power)
+static inline double sgn(double v) { return (v > 0) - (v < 0); }
+
+// Read average motor position (degrees) for each corner (2 motors per corner)
+static inline double FL_deg() { return 0.5 * (Front_Left_1.get_position()  + Front_Left_2.get_position()); }
+static inline double FR_deg() { return 0.5 * (Front_Right_1.get_position() + Front_Right_2.get_position()); }
+static inline double BL_deg() { return 0.5 * (Back_Left_1.get_position()   + Back_Left_2.get_position()); }
+static inline double BR_deg() { return 0.5 * (Back_Right_1.get_position()  + Back_Right_2.get_position()); }
+
+// =====================================
+// DRIVE STRAIGHT "TO POINT" USING ONLY:
+// - Drive motor encoders (forward + strafe estimate)
+// - IMU rotation + gyro DPS (heading hold, damping)
+// NO odom wheels / odomX / odomY
+// =====================================
+void driveToDistance_EncIMU_XDrive(
+    double targetInches,        // e.g. 20.0
+    double holdHeadingDeg,      // e.g. 0.0
+    int maxDrive,
+    int maxTurn,
+    int timeoutMs
+) {
+  const uint32_t t0 = pros::millis();
+  const int loopMs = 20;
+
+  // ---- Robot constants (EDIT THESE) ----
+  const double wheelDiamIn = 3.25;          // change to your wheel diameter
+  const double gearWheelPerMotor = 1.0;     // wheel rotations per motor rotation (1.0 if direct)
+  const double wheelCirc = M_PI * wheelDiamIn;
+
+  auto degToIn = [&](double motorDeg) {
+    double motorRev = motorDeg / 360.0;
+    double wheelRev = motorRev * gearWheelPerMotor;
+    return wheelRev * wheelCirc;
+  };
+
+  // ---- Gains ----
   const double kP_y = 10.0;
   const double kI_y = 0.0;
   const double kD_y = 30.0;
 
-  // Cross-track (inches -> power)  <-- "return to line"
-  // If it still finishes right: increase kD_x first, then kP_x.
   const double kP_x = 18.0;
-  const double kD_x = 110.0;   // was 90, more bite to stop ending offset
+  const double kD_x = 110.0;
 
-  // Heading hold (deg -> power)
-  const double kP_h = 2.0;
-  const double kD_h = 8.0;
+  const double kP_h   = 2.0;   // deg -> power
+  const double kD_dps = 0.12;  // (deg/sec) -> power (gyro damping)
 
-  // -----------------------------
-  // LIMITS / THRESHOLDS
-  // -----------------------------
+  // ---- Tolerances ----
   const double posTolIn    = 0.5;
-  const double strafeTolIn = 0.10;   // tightened
+  const double strafeTolIn = 0.15; // encoder-estimated strafe is noisier than odom wheels
   const double headTolDeg  = 1.0;
 
-  const double xDeadbandIn = 0.03;
+  // ---- Minimum outputs ----
+  const double MIN_FWD = 10.0;
+  const double MIN_STR = 10.0;
+  const double MIN_T   = 7.0;
 
-  // Strafe authority
-  // If it STILL ends right: raise xMaxMin first (finish authority).
-  const double xMaxMin = 40.0;   // was 25, stronger at low speed / near end
-  const double xMaxMax = 110.0;  // was 90, stronger at speed
+  // ---- I-zone for forward ----
+  const double iZoneIn = 6.0;
+  const double iLimit  = 30.0;
 
-  // Integral gating (optional; safe)
-  const double iZoneIn  = 6.0;
-  const double iLimit   = 30.0;
+  // ---- Strafe shaping ----
+  const double xDeadbandIn = 0.05;
+  const double xMaxMin = 35.0;
+  const double xMaxMax = 110.0;
 
-  // Settle requirements
-  const int settleReq = 10;      // 10*20ms = 200ms
+  // ---- Endgame ----
+  const double nearEndIn    = 8.0;
+  const double endBoost     = 1.5;
+  const double endTurnScale = 0.4;
+
+  // ---- Settle ----
+  const int settleReq = 10;
   int settleCount = 0;
 
-  // End-game behavior
-  const double nearEndIn = 8.0;         // last 8"
-  const double endXHoldIn = 0.15;        // must be within 0.15" cross-track near end
-  const double endBoost = 1.6;           // more x authority near end
-  const double endTurnScale = 0.4;       // reduce turning near end if off-line
+  // ---- State ----
+  resetDriveEncoders();
 
-  auto clampd_local = [](double v, double lo, double hi) {
-    return (v < lo) ? lo : (v > hi) ? hi : v;
-  };
-
-  auto wrapDeg_local = [](double d) {
-    while (d > 180.0) d -= 360.0;
-    while (d < -180.0) d += 360.0;
-    return d;
-  };
-
-  auto degToRad_local = [](double d) { return d * M_PI / 180.0; };
-
-  // -----------------------------
-  // Snapshot start pose (from odomTask)
-  // -----------------------------
-  const double x0 = odomX;
-  const double y0 = odomY;
-
-  // Direction unit vector of the desired line in FIELD frame.
-  // Your odom mapping implies: forward in field = (-sin(theta), +cos(theta))
-  const double th = degToRad_local(holdHeadingDeg);
-  const double ux = -std::sin(th);
-  const double uy =  std::cos(th);
-
-  // Perpendicular (left of u) in FIELD frame
-  const double nx = -uy;
-  const double ny =  ux;
-
-  // -----------------------------
-  // PID state
-  // -----------------------------
   double lastEy = 0.0, iEy = 0.0;
   double lastEx = 0.0;
-  double lastHeadErr = 0.0;
 
-  const uint32_t t0 = pros::millis();
   int lcdCounter = 0;
-
-  // Keep these visible for LCD
-  double along = 0.0, cross = 0.0, eY = 0.0, eX = 0.0;
-  double yOut = 0.0, xOut = 0.0, rOut = 0.0, xMaxNow = 0.0;
-  double curHead = 0.0, headErr = 0.0;
 
   while (true) {
     const uint32_t now = pros::millis();
     if ((int)(now - t0) > timeoutMs) break;
 
-    // Current pose
-    const double x = odomX;
-    const double y = odomY;
+    // Read corner motor positions (deg)
+    const double flD = FL_deg();
+    const double frD = FR_deg();
+    const double blD = BL_deg();
+    const double brD = BR_deg();
 
-    // Vector from start -> current in FIELD
-    const double dx = x - x0;
-    const double dy = y - y0;
+    // Invert X-drive mix to estimate robot-frame translation:
+    // yDeg = (fl+fr+bl+br)/4
+    // xDeg = (fl-fr-bl+br)/4
+    const double yDeg = (flD + frD + blD + brD) * 0.25;
+    const double xDeg = (flD - frD - blD + brD) * 0.25;
 
-    // -----------------------------
-    // Line-following errors
-    // -----------------------------
-    // Along-track distance traveled along the desired line:
-    along = dx * ux + dy * uy;
+    const double yIn = degToIn(yDeg);  // forward distance estimate
+    const double xIn = degToIn(xDeg);  // strafe distance estimate
 
-    // Cross-track error: signed distance from the line (positive = left of line)
-    cross = dx * nx + dy * ny;
+    // Errors
+    const double eY = (targetInches - yIn);
 
-    // We want along -> targetInches, and cross -> 0
-    eY = (targetInches - along); // forward remaining
-    eX = (cross);                // signed; if correction feels wrong, flip: eX = -cross;
+    // Strafe drift to cancel (target strafe = 0)
+    // If correction goes the wrong direction, flip sign: const double eX = (-xIn);
+    const double eX = (xIn);
 
-    // Heading error (IMU)
-    curHead = IMU.get_heading();
-    headErr = wrapDeg_local(holdHeadingDeg - curHead);
+    // Heading error
+    const double curHead = IMU.get_rotation();
+    const double headErr = wrapDeg(holdHeadingDeg - curHead);
 
-    // -----------------------------
-    // End constraint: do NOT allow finishing off the line
-    // -----------------------------
+    // ✅ FIX: PROS get_gyro_rate() returns a struct (imu_gyro_s_t), use .z for yaw rate
+    pros::imu_gyro_s_t gyro = IMU.get_gyro_rate();
+    const double dps = gyro.z; // deg/sec, yaw rate (+CCW)
+
     const bool nearEnd = (std::fabs(eY) < nearEndIn);
-    if (nearEnd && std::fabs(eX) > endXHoldIn) {
-      // Force more correction time; prevent settle from building
-      settleCount = 0;
-    }
 
-    // -----------------------------
-    // Settle exit
-    // -----------------------------
+    // Settle logic
     const bool posOK = (std::fabs(eY) < posTolIn);
     const bool strOK = (std::fabs(eX) < strafeTolIn);
     const bool hdOK  = (std::fabs(headErr) < headTolDeg);
@@ -662,55 +610,53 @@ void driveForward_EncoderPID2(double targetInches,
     if (settleCount >= settleReq) break;
 
     // -----------------------------
-    // Along-track PID -> yOut
+    // Forward PID
     // -----------------------------
-    const double dEy = eY - lastEy;
+    const double dEy = (eY - lastEy);
     lastEy = eY;
 
     if (std::fabs(eY) < iZoneIn) iEy += eY;
     else iEy = 0.0;
 
-    iEy = clampd_local(iEy, -iLimit, iLimit);
+    iEy = clampd(iEy, -iLimit, iLimit);
 
-    yOut = (kP_y * eY) + (kI_y * iEy) + (kD_y * dEy);
-    yOut = clampd_local(yOut, -(double)maxDrive, (double)maxDrive);
+    double yOut = kP_y * eY + kI_y * iEy + kD_y * dEy;
+    yOut = clampd(yOut, -(double)maxDrive, (double)maxDrive);
+
+    if (std::fabs(eY) > posTolIn && std::fabs(yOut) < MIN_FWD)
+      yOut = sgn(eY) * MIN_FWD;
 
     // -----------------------------
-    // Cross-track PD -> xOut  (return to line)
+    // Strafe PD "snap back"
     // -----------------------------
-    const double dEx = eX - lastEx;
+    const double dEx = (eX - lastEx);
     lastEx = eX;
 
-    xOut = (kP_x * eX) + (kD_x * dEx);
+    double xOut = kP_x * eX + kD_x * dEx;
 
     if (std::fabs(eX) < xDeadbandIn) xOut = 0.0;
 
-    // Dynamic x limit:
-    // - more authority at high speed
-    // - ALSO boost near the end so it can finish correcting (prevents ending right)
     const double speedFrac = std::fabs(yOut) / std::max(1.0, (double)maxDrive);
-    xMaxNow = xMaxMin + (xMaxMax - xMaxMin) * speedFrac;
+    double xMaxNow = xMaxMin + (xMaxMax - xMaxMin) * speedFrac;
     if (nearEnd) xMaxNow *= endBoost;
 
-    xOut = clampd_local(xOut, -xMaxNow, xMaxNow);
+    xOut = clampd(xOut, -xMaxNow, xMaxNow);
+
+    if (std::fabs(eX) > strafeTolIn && std::fabs(xOut) < MIN_STR)
+      xOut = sgn(eX) * MIN_STR;
 
     // -----------------------------
-    // Heading PD -> rOut
+    // Heading hold: P on error, D on gyro DPS (damping)
     // -----------------------------
-    rOut = (kP_h * headErr) + (kD_h * (headErr - lastHeadErr));
-    lastHeadErr = headErr;
+    double rOut = (kP_h * headErr) - (kD_dps * dps);
+    rOut = clampd(rOut, -(double)maxTurn, (double)maxTurn);
 
-    rOut = clampd_local(rOut, -(double)maxTurn, (double)maxTurn);
+    if (std::fabs(headErr) > headTolDeg && std::fabs(rOut) < MIN_T)
+      rOut = sgn(headErr) * MIN_T;
 
-    // If you're far off the line, reduce turning so it "slides back" instead of arcing
-    if (std::fabs(eX) > 1.0) {
-      rOut = clampd_local(rOut, -12.0, 12.0);
-    }
-
-    // Near the end: if still off-line, reduce turning even more so xOut can finish
-    if (nearEnd && std::fabs(eX) > endXHoldIn) {
-      rOut *= endTurnScale;
-    }
+    // Reduce turning if strafe correction is large to prevent arcing
+    if (std::fabs(eX) > 1.0) rOut = clampd(rOut, -12.0, 12.0);
+    if (nearEnd && std::fabs(eX) > strafeTolIn) rOut *= endTurnScale;
 
     // -----------------------------
     // X-drive mix
@@ -720,7 +666,6 @@ void driveForward_EncoderPID2(double targetInches,
     double bl = yOut - xOut + rOut;
     double br = yOut + xOut - rOut;
 
-    // Normalize
     double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br)});
     if (maxMag > 127.0) {
       const double sc = 127.0 / maxMag;
@@ -730,19 +675,19 @@ void driveForward_EncoderPID2(double targetInches,
     setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
 
     // -----------------------------
-    // Debug LCD (~100ms)
+    // Debug (~100ms)
     // -----------------------------
     if (++lcdCounter >= 5) {
       lcdCounter = 0;
-      pros::lcd::print(0, "along:%.2f eY:%.2f", along, eY);
-      pros::lcd::print(1, "cross:%.2f eX:%.2f", cross, eX);
-      pros::lcd::print(2, "H:%.1f e:%.1f", curHead, headErr);
+      pros::lcd::print(0, "yIn:%.2f eY:%.2f", yIn, eY);
+      pros::lcd::print(1, "xIn:%.2f eX:%.2f", xIn, eX);
+      pros::lcd::print(2, "H:%.1f eH:%.1f", curHead, headErr);
       pros::lcd::print(3, "y:%.0f x:%.0f r:%.0f", yOut, xOut, rOut);
-      pros::lcd::print(4, "xMax:%.0f set:%d", xMaxNow, settleCount);
+      pros::lcd::print(4, "set:%d dps:%.1f", settleCount, dps);
       pros::lcd::print(5, "t:%dms", (int)(now - t0));
     }
 
-    pros::delay(20);
+    pros::delay(loopMs);
   }
 
   setDrivePower(0, 0, 0, 0);

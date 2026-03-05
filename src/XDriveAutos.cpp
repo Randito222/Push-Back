@@ -262,21 +262,22 @@ void driveToPoint_XDrive_PID(
     setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
 
     // Debug
-    if (++lcdCounter >= 5) {
-      lcdCounter = 0;
-      pros::lcd::print(0, "d:%.2f xRaw:%.2f y:%.2f", dist, xLineErrRaw, yErr);
-      pros::lcd::print(1, "mode:%s kick:%d", (xMode==XMode::SNAP)?"SNAP":"HOLD", xKick);
-      pros::lcd::print(2, "xOut:%.0f yOut:%.0f hOut:%.0f", xOut, yOut, hOut);
-      pros::lcd::print(3, "h:%.1f eH:%.2f", curDeg, hErr);
-      pros::lcd::print(4, "dyn:%d set:%d", dynMaxDrive, settleCount);
-      pros::lcd::print(5, "t:%dms", (int)(now - start));
-    }
+    // if (++lcdCounter >= 5) {
+    //   lcdCounter = 0;
+    //   pros::lcd::print(0, "d:%.2f xRaw:%.2f y:%.2f", dist, xLineErrRaw, yErr);
+    //   pros::lcd::print(1, "mode:%s kick:%d", (xMode==XMode::SNAP)?"SNAP":"HOLD", xKick);
+    //   pros::lcd::print(2, "xOut:%.0f yOut:%.0f hOut:%.0f", xOut, yOut, hOut);
+    //   pros::lcd::print(3, "h:%.1f eH:%.2f", curDeg, hErr);
+    //   pros::lcd::print(4, "dyn:%d set:%d", dynMaxDrive, settleCount);
+    //   pros::lcd::print(5, "t:%dms", (int)(now - start));
+    // }
 
     pros::delay(loopMs);
   }
 
   setDrivePower(0, 0, 0, 0);
 }
+
 
 void turnToHeading_PID(double targetDeg, int maxTurn, int timeoutMs) {
   const uint32_t start = pros::millis();

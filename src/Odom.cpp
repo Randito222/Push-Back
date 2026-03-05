@@ -259,14 +259,14 @@ void odomTask() {
     }
 
     // --- Brain LCD every ~200ms ---
-    // if (++lcdCounter >= 20) {
-    //   lcdCounter = 0;
-    //   pros::lcd::print(0, "X: %.2f in", odomX);
-    //   pros::lcd::print(1, "Y: %.2f in", odomY);
-    //   pros::lcd::print(2, "H: %.1f deg", odomTheta * 180.0 / M_PI);
-    //   pros::lcd::print(3, "dL:%.2f dR:%.2f", dLraw, dRraw);
-    //   pros::lcd::print(4, "dH:%.2f dTh:%.3f", dHraw, dThetaRaw);
-    // }
+    if (++lcdCounter >= 20) {
+      lcdCounter = 0;
+      pros::lcd::print(0, "X: %.2f in", odomX);
+      pros::lcd::print(1, "Y: %.2f in", odomY);
+      pros::lcd::print(2, "H: %.1f deg", odomTheta * 180.0 / M_PI);
+      pros::lcd::print(3, "dL:%.2f dR:%.2f", dLraw, dRraw);
+      pros::lcd::print(4, "dH:%.2f dTh:%.3f", dHraw, dThetaRaw);
+    }
 
     // --- USB terminal every ~500ms ---
     if (++usbCounter >= 50) {
