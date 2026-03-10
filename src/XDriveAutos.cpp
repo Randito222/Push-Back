@@ -59,11 +59,11 @@ void driveToPoint_XDrive_PID(
 
   // X line lock BASE gains (will be scaled by mode multipliers)
   const double kP_x = 32.0;
-  const double kD_x = 140.0;
+  const double kD_x = 150.0;
   const double kI_x = 0.45;
 
   // Heading (deg)
-  const double kP_h = 2.4;
+  const double kP_h = 3.0;
   const double kD_h = 9.0;
 
   // =============================

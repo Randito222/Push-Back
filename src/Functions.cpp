@@ -13,7 +13,7 @@ void IntakeSpin() {
   } 
   else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == -1) {
     FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    Arm.move_absolute(-590,130);  // Stop the intake motor when B is pressed
+    Arm.move_absolute(-590,200);  // Stop the intake motor when B is pressed
     // KnownState=1;
   }
   else if(master.get_digital(DIGITAL_B) == true && IntakeLiftT == 1){
@@ -202,7 +202,7 @@ bool descoreState = false;    // current descore toggle state
 bool holdingY = false;
 
 uint32_t yPressStart = 0;
-const uint32_t HOLD_TIME_MS = 800;
+const uint32_t HOLD_TIME_MS = 200;
 
 void descoring() {
     bool yPressed = master.get_digital(DIGITAL_Y);

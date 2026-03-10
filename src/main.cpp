@@ -79,6 +79,7 @@ void initialize() {
       {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
       {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
       {"Right Elims Auton\n\nAuton for right side elims.", RightElimsAuton},
+      {"Left Elims Auton\n\nAuton for left side elims.", LeftElimsAuton},
       {"Off the park\n\nAuton to get off the park.", OffParkAuton},
       {"Skills\n\nAuton for Skills.", SkillsSafe},
    });

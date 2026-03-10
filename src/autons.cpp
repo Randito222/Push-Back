@@ -58,38 +58,6 @@ void default_constants() {
 void AutonTesting(){
 
   FrontIntake.move(127);  // Spin the intake
-  driveToPoint_XDrive_PID(-34,0,0,127,127,1300); // Goes to the three balls near the center
-  TongueMech.set_value(1); //Brings the tongue out to hold the balls
-  turnToHeading_IMUPID(180, 90, 1000);
-  driveToPoint_XDrive_PID(-34,-14,180,127,127,1300); // Goes to the three balls near the center
-  pros::delay(1000);
-  driveToPoint_XDrive_PID(-35,34,180,127,127,2000); // Goes to the three balls near the center
-  TongueMech.set_value(0); // Brings the tongue back up
-
-  FrontIntake.move(-127);
-  Arm.move_absolute(-700, 200);
-  pros::delay(1000);
-  Arm.move_absolute(0, 200);
-
-  driveToPoint_XDrive_PID(-36,23,180,127,127,1000); // Goes to the three balls near the center  
-  Descore.set_value(0);
-  DescoreLift.set_value(1);
-
-  driveToPoint_XDrive_PID(-24,23,180,127,127,1000);
-  Descore.set_value(0);
-  driveToPoint_XDrive_PID(-25,50,180,70,127,2000);
-  turnToHeading_IMUPID(185, 90, 1000);
-
-  
-}
-
-void soloAWP(){
-}
-
-void RightSideAuton(){
-
-
-  FrontIntake.move(127);  // Spin the intake
   driveToPoint_XDrive_PID(10,15,0,127,127,1300); // Goes to the three balls near the center
   TongueMech.set_value(1); //Brings the tongue out to hold the balls
 
@@ -107,17 +75,53 @@ void RightSideAuton(){
   turnToHeading_IMUPID(-183, 127, 1000);
   TongueMech.set_value(1); //Brings the tongue out to get balls out
 
-  driveToPoint_XDrive_PID(40, -9, -182, 127, 127, 800); // Goes to match loader
+  driveToPoint_XDrive_PID(40, -11, -182, 127, 127, 800); // Goes to match loader
+  pros::delay(1300); //waits for the match loader to load the balls
+  driveToPoint_XDrive_PID(52, 0, -180, 127, 127, 1000); // Goes to match loader
+
+  driveToPoint_XDrive_PID(52, 100, -180, 127, 127, 3000); // Goes to match loader
+  TongueMech.set_value(0); //Brings the tongue out to get balls out
+
+  turnToHeading_IMUPID(0, 127, 1000);
+  driveToPoint_XDrive_PID(34, 82, 0, 127, 127, 1000); // Goes to match loader
+  driveToPoint_XDrive_PID(34, 75, 0, 127, 127, 1000); // Goes to match loader
+
+}
+
+void soloAWP(){
+}
+
+void RightSideAuton(){
+
+  FrontIntake.move(127);  // Spin the intake
+  driveToPoint_XDrive_PID(12,15,0,127,127,1300); // Goes to the three balls near the center
+  TongueMech.set_value(1); //Brings the tongue out to hold the balls
+
+  driveToPoint_XDrive_PID(11,30,0,80,80,2100); // Goes foward to intake the balls
+  TongueMech.set_value(0); // Brings the tongue back up
+
+  driveToPoint_XDrive_PID(2, 32, 0, 127, 127, 1000); // Goes to lower goal
+  turnToHeading_IMUPID(-45, 127, 500);
+  FrontIntake.move(-127); // Spit the balls out into lower goal
+  pros::delay(2000);
+  FrontIntake.move(127); // Spin the intake back on
+
+  driveToPoint_XDrive_PID(20, 2, 0, 127, 127, 1500); // Goes to lower goal
+  driveToPoint_XDrive_PID(39, 2, 0, 110, 127, 1250); // Goes to lower goal
+  TongueMech.set_value(1); //Brings the tongue out to get balls out
+  turnToHeading_IMUPID(-180, 127, 1000);
+
+  driveToPoint_XDrive_PID(37, -9, -180, 127, 127, 850); // Goes to match loader
   pros::delay(1000); //waits for the match loader to load the balls
 
-  driveToPoint_XDrive_PID(40,33, -180, 127, 127, 1500); // Goes to long goal
+  driveToPoint_XDrive_PID(38,33, -180, 127, 127, 1600); // Goes to long goal
 
   FrontIntake.move(-127);
   Arm.move_absolute(-700, 200);
   pros::delay(1000);
   Arm.move_absolute(0, 200);
 
-  driveToPoint_XDrive_PID(35,12, -180, 127, 127, 2000); // Gets ready to wing
+  driveToPoint_XDrive_PID(38,12, -180, 127, 127, 1300); // Gets ready to wing
   turnToHeading_IMUPID(0, 127, 1000);
 
 
@@ -190,106 +194,65 @@ void RightElimsAuton(){
 
 }
 
+void LeftElimsAuton(){
+  FrontIntake.move(127);  // Spin the intake
+  driveToPoint_XDrive_PID(-34,0,0,127,127,1300); // Goes to the three balls near the center
+  TongueMech.set_value(1); //Brings the tongue out to hold the balls
+  turnToHeading_IMUPID(180, 90, 1000);
+  driveToPoint_XDrive_PID(-34,-14,180,127,127,1300); // Goes to the three balls near the center
+  pros::delay(1000);
+  driveToPoint_XDrive_PID(-35,34,180,127,127,2000); // Goes to the three balls near the center
+  TongueMech.set_value(0); // Brings the tongue back up
+
+  FrontIntake.move(-127);
+  Arm.move_absolute(-700, 200);
+  pros::delay(1000);
+  Arm.move_absolute(0, 200);
+
+  driveToPoint_XDrive_PID(-36,23,180,127,127,1000); // Goes to the three balls near the center  
+  Descore.set_value(0);
+  DescoreLift.set_value(1);
+
+  driveToPoint_XDrive_PID(-24,23,180,127,127,1000);
+  Descore.set_value(0);
+  driveToPoint_XDrive_PID(-25,50,180,70,127,2000);
+  turnToHeading_IMUPID(185, 90, 1000);
+}
+
 void OffParkAuton(){
   driveStrafe_EncoderPID(-5, 0, 50, 50, 3000);
 }
 
 
 void Skills(){
-  FrontIntake.move(127);  // Spin the intake 
 
-  turnToHeading_IMUPID(25, 50, 1000);
+  FrontIntake.move(127);  // Spin the intake
+  driveToPoint_XDrive_PID(10,15,0,127,127,1300); // Goes to the three balls near the center
+  TongueMech.set_value(1); //Brings the tongue out to hold the balls
 
-  driveForward_EncoderPID(20, 25, 50, TURN_SPEED, 2000);
+  driveToPoint_XDrive_PID(11,30,0,80,80,2100); // Goes foward to intake the balls
+  TongueMech.set_value(0); // Brings the tongue back up
 
-  TongueMech.set_value(1);
+  driveToPoint_XDrive_PID(2, 32, 0, 127, 127, 1000); // Goes to lower goal
+  turnToHeading_IMUPID(-45, 127, 500);
+  FrontIntake.move(-127); // Spit the balls out into lower goal
+  pros::delay(2000);
+  FrontIntake.move(127); // Spin the intake back on
 
-  driveForward_EncoderPID(22, 25, 50, TURN_SPEED, 3000);
+  driveToPoint_XDrive_PID(20, 2, 0, 127, 127, 1500); // Goes to lower goal
+  driveToPoint_XDrive_PID(38, 2, 0, 110, 127, 1200); // Goes to lower goal
+  turnToHeading_IMUPID(-183, 127, 1000);
+  TongueMech.set_value(1); //Brings the tongue out to get balls out
 
-  driveForward_EncoderPID(-35, 25, 40, 50, 5000);
+  driveToPoint_XDrive_PID(40, -9, -182, 127, 127, 800); // Goes to match loader
+  pros::delay(1000); //waits for the match loader to load the balls
 
-  turnToHeading_IMUPID(90, 50, 1200);
+  driveToPoint_XDrive_PID(40,33, -180, 127, 127, 1500); // Goes to long goal
 
-  driveForward_EncoderPID(31, 90, 50, TURN_SPEED, 3000);
-
-  turnToHeading_IMUPID(180, 50, 1200);
-
-  driveForward_EncoderPID(-27, 180, 50, TURN_SPEED, 2000);
-
-  Arm.move_absolute(-700, 170);
-  pros::delay(1200);
-  Arm.move_absolute(0, 200);
+  FrontIntake.move(-127);
+  Arm.move_absolute(-700, 200);
   pros::delay(1000);
-  Arm.move_absolute(-700, 170);
-  pros::delay(1200);
   Arm.move_absolute(0, 200);
-  pros::delay(1000);
-
-  TongueMech.set_value(1);
-
-
-  turnToHeading_IMUPID(175, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(34, 175, 50, TURN_SPEED, 10000);
-
-  pros::delay(500);
-
-  driveForward_EncoderPID(-2, 175, 50, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(2, 175, 50, TURN_SPEED, 1200);
-
-  driveForward_EncoderPID(-20, 175, 50, TURN_SPEED, 2000);
-
-  turnToHeading_IMUPID(85, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(7, 85, 50, TURN_SPEED, 1200);
-
-  TongueMech.set_value(0);
-
-  turnToHeading_IMUPID(0, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(80, 0, 50, TURN_SPEED, 6000);
-
-  turnToHeading_IMUPID(-90, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(9, -90, 50, TURN_SPEED, 4000);
-
-  turnToHeading_IMUPID(0, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(-12, 0, 50, TURN_SPEED, 4000);
-
-  Arm.move_absolute(-700, 170);
-  pros::delay(1200);
-  Arm.move_absolute(0, 200);
-  pros::delay(1000);
-  Arm.move_absolute(-700, 170);
-  pros::delay(1200);
-  Arm.move_absolute(0, 200);
-  pros::delay(1000);
-
-  TongueMech.set_value(1);
-
-
-  turnToHeading_IMUPID(0, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(34, 0, 50, TURN_SPEED, 10000);
-
-  pros::delay(500);
-
-  driveForward_EncoderPID(-2, 0, 50, TURN_SPEED, 1000);
-
-  driveForward_EncoderPID(2, 0, 50, TURN_SPEED, 1200);
-
-  driveForward_EncoderPID(-20, 0, 50, TURN_SPEED, 2000);
-
-  Arm.move_absolute(-700, 170);
-  pros::delay(1200);
-  Arm.move_absolute(0, 200);
-  pros::delay(1000);
-  Arm.move_absolute(-700, 170);
-  pros::delay(1200);
-  Arm.move_absolute(0, 200);
-  pros::delay(1000);
 
 
 }
