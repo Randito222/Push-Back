@@ -4,6 +4,7 @@
 #include "XDriveAutos.hpp"
 #include "main.h"
 #include "pros/motors.h"
+#include "pros/rtos.hpp"
 #include "subsystems.hpp"
 
 /////
@@ -77,14 +78,53 @@ void AutonTesting(){
 
   driveToPoint_XDrive_PID(40, -11, -182, 127, 127, 800); // Goes to match loader
   pros::delay(1300); //waits for the match loader to load the balls
-  driveToPoint_XDrive_PID(52, 0, -180, 127, 127, 1000); // Goes to match loader
+  driveToPoint_XDrive_PID(52, 0, -180, 127, 127, 1000); 
 
-  driveToPoint_XDrive_PID(52, 100, -180, 127, 127, 3000); // Goes to match loader
-  TongueMech.set_value(0); //Brings the tongue out to get balls out
+  // goes to other side of field to score in long goal
+  driveToPoint_XDrive_PID(52, 100, -180, 127, 127, 3000); 
+  TongueMech.set_value(0); 
 
   turnToHeading_IMUPID(0, 127, 1000);
-  driveToPoint_XDrive_PID(34, 82, 0, 127, 127, 1000); // Goes to match loader
-  driveToPoint_XDrive_PID(34, 75, 0, 127, 127, 1000); // Goes to match loader
+  driveToPoint_XDrive_PID(34, 82, 0, 127, 127, 2000); 
+  driveToPoint_XDrive_PID(34, 75, 0, 127, 127, 2000); 
+  Arm.move_absolute(-700, 200);
+  pros::delay(1000);
+  Arm.move_absolute(0, 200);
+
+  TongueMech.set_value(1);
+  driveToPoint_XDrive_PID(34, 100, 0, 127, 127, 2000); 
+  pros::delay(1300);
+  driveToPoint_XDrive_PID(34, 75, 0, 127, 127, 2000); 
+  Arm.move_absolute(-700, 200);
+  pros::delay(1000);
+  Arm.move_absolute(0, 200);
+
+  TongueMech.set_value(0);
+  driveToPoint_XDrive_PID(-40, 82, 0, 127, 127, 4000); 
+  driveToPoint_XDrive_PID(-40, 100, 0, 127, 127, 2000); 
+  pros::delay(1300);
+
+  driveToPoint_XDrive_PID(-52, 82, 0, 127, 127, 2000); 
+  TongueMech.set_value(0);
+  driveToPoint_XDrive_PID(-52, -10, 0, 127, 127, 4000); 
+  turnToHeading_IMUPID(180, 90, 1200);
+
+  driveToPoint_XDrive_PID(-40, -10, 180, 127, 127, 2000); 
+  driveToPoint_XDrive_PID(-40, 0, 180, 127, 127, 2000); 
+  Arm.move_absolute(-700, 200);
+  pros::delay(1000);
+  Arm.move_absolute(0, 200);
+
+
+  driveToPoint_XDrive_PID(-40, -20, 180, 127, 127, 2000); 
+  pros::delay(1300);
+  driveToPoint_XDrive_PID(-40, 0, 180, 127, 127, 2000);
+  Arm.move_absolute(-700, 200);
+  pros::delay(1000);
+  Arm.move_absolute(0, 200);
+
+  TongueMech.set_value(0);
+  driveToPoint_XDrive_PID(-15, -10, 180, 127, 127, 2000);
 
 }
 
