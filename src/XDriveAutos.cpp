@@ -70,7 +70,7 @@ void driveToPoint_XDrive_PID(
   // TOLERANCES + SETTLE
   // =============================
   const double posTolIn    = 1.0;
-  const double headTolDeg  = 2.0;
+  const double headTolDeg  = 1.0;
   const int    settleReq   = 10;
 
   // =============================
