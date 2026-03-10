@@ -25,3 +25,9 @@ void Drive_EncoderPID(double targetInchesY,
                                          int maxDrive,
                                          int maxTurn,
                                          int timeoutMs);
+
+void driveForward_EncoderPID2(double targetInches,
+                             double holdHeadingDeg,
+                             int maxDrive,
+                             int maxTurn,
+                             int timeoutMs);

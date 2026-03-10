@@ -20,7 +20,7 @@ ez::Drive chassis(
     {-14, 13, -12,11},     // Left Chassis Ports (negative port will reverse it!)
     {18, -17, 19,-20},  // Right Chassis Ports (negative port will reverse it!)
 
-    2,      // IMU Port
+    6,      // IMU Port
     3.25,  // Wheel Diameter (Remember, 4" wheels without screw holes are actually 4.125!)
     343
   
@@ -44,8 +44,11 @@ void initialize() {
   // Print our branding over your terminal :D
   ez::ez_template_print();
   IMU.reset();  // Calibrate the IMU (Gyro)
-  odomReset();
+  Descore.set_value(1);
   //Drive_Controls_task.resume(); // Start the drive control task
+
+  fcZeroRad = 0.0;
+  lastFC = true;
 
   pros::delay(500);  // Stop the user from doing anything while legacy ports configure
 
@@ -72,19 +75,26 @@ void initialize() {
 
   // Autonomous Selector using LLEMU
   ez::as::auton_selector.autons_add({
-      //{"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
-      //  {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
-      //  {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
-      {"Skills\n\nAuton for Skills.", Skills},
+      {"Auton Testing\n\nThis is for testing auton code.", AutonTesting},
+      {"Right Side Auton\n\nAuton for right side.", RightSideAuton},
+      {"Left Side Auton\n\nAuton for left side.", LeftSideAuton},
+      {"Right Elims Auton\n\nAuton for right side elims.", RightElimsAuton},
+      {"Left Elims Auton\n\nAuton for left side elims.", LeftElimsAuton},
+      {"Off the park\n\nAuton to get off the park.", OffParkAuton},
+      {"Skills\n\nAuton for Skills.", SkillsSafe},
    });
 
 
 
   // Initialize chassis and auton selector
-  pros::Task OdomTask(odomTask);
   chassis.initialize();
   ez::as::initialize();
   master.rumble(chassis.drive_imu_calibrated() ? "." : "---");
+  pros::Task OdomTask2(odomTask);
+
+
+
+  odomReset(0,0);
   
 }
 
@@ -94,7 +104,7 @@ void initialize() {
  * the robot is enabled, this task will exit.
  */
 void disabled() {
-  // . . .
+  // . . 
 }
 
 /**
@@ -122,26 +132,12 @@ void competition_initialize() {
  * from where it left off.
  */
 void autonomous() {
-  //pros::Task Myodom(odomTask);
-  //resetOdom();
+  odomReset(0,0);
   chassis.pid_targets_reset();                // Resets PID targets to 0
   chassis.drive_imu_reset();                  // Reset gyro position to 0
   chassis.drive_sensor_reset();               // Reset drive sensors to 0
-  chassis.odom_xyt_set(0_in, 0_in, 0_deg);    // Set the current position, you can start at a specific position with this
   chassis.drive_brake_set(MOTOR_BRAKE_HOLD);  // Set motors to hold.  This helps autonomous consistency
 
-  /*
-  Odometry and Pure Pursuit are not magic
-
-  It is possible to get perfectly consistent results without tracking wheels,
-  but it is also possible to have extremely inconsistent results without tracking wheels.
-  When you don't use tracking wheels, you need to:
-   - avoid wheel slip
-   - avoid wheelies
-   - avoid throwing momentum around (super harsh turns, like in the example below)
-  You can do cool curved motions, but you have to give your robot the best chance
-  to be consistent
-  */
 
   ez::as::auton_selector.selected_auton_call();  // Calls selected auton from autonomous selector
 }
@@ -253,31 +249,22 @@ void opcontrol() {
   // This is preference to what you like to drive on
   chassis.drive_brake_set(MOTOR_BRAKE_COAST);
   
+   
 
   while (true) {
 
-    ArmAction();
+    //ArmAction();
     IntakeLiftToggle();
     MatchLoading();
     descoring();
+    IntakeSpin();
     // Gives you some extras to make EZ-Template ezier
     ez_template_extras();
     //chassis.opcontrol_tank();
     
     
     DriveControlUnified(true);  // Run the drive control function
-
-    
-
-    if(master.get_digital(DIGITAL_R2)) {
-      FrontIntake.move(127);  // Spin the intake motor when R1 is pressed
-    }
-    else if(master.get_digital(DIGITAL_R1)) {
-      FrontIntake.move(-127);  // Spin the intake motor in reverse when R2 is pressed
-    } 
-    else{
-      FrontIntake.move(0);  // Stop the intake motor when R2 is pressed
-    }
+     
   
     pros::delay(ez::util::DELAY_TIME);  // This is used for timer calculations!  Keep this ez::util::DELAY_TIME
   }
