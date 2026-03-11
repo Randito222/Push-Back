@@ -18,3 +18,6 @@ void MatchLoading();
 
 inline int KnownState = 0;
 void ArmAction();
+
+static double fcZeroRad = 0.0;
+static bool lastFC = false;

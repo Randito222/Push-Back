@@ -105,14 +105,14 @@ void driveForward_EncoderPID(double targetInches,
   const double integralLimit = (Ki > 0.0) ? (25.0 / Ki) : 0.0;        // ~25 power max from I
 
   // Exit + settle (prevents "fly-by then reverse" oscillation)
-  const double exitThresholdDeg = inToDeg(0.5, wheelDiamIn);          // 0.5"
+  const double exitThresholdDeg = inToDeg(0.5, wheelDiamIn);         
   const double settlePosTolDeg  = inToDeg(0.6, wheelDiamIn);          // slightly looser than exit
   const int    settleCyclesReq  = 8;                                  // 8*20ms = 160ms
 
   // =============================
   // Heading hold PD
   // =============================
-  const double kP_h = 2.0;
+  const double kP_h = 2.0; 
   const double kD_h = 6.0;
   const double MIN_T = 4.0;
   const double headTolDeg = 1.0;
@@ -120,8 +120,8 @@ void driveForward_EncoderPID(double targetInches,
   // =============================
   // Strafe correction PD (horizontal tracker)
   // =============================
-  const double kP_x = 7.0;     // enable later (start small like 6.0 if needed)
-  const double kD_x = 20.0;     // and 40-70 depending on wiggle
+  const double kP_x = 20;     
+  const double kD_x = 0.0;    
   const double xMax = 45.0;
   const double strafeDeadbandIn = 0.05;
 
@@ -216,8 +216,8 @@ void driveForward_EncoderPID(double targetInches,
     // X-drive mix
     // =============================
     double fl = yOut + xOut + rOut;
-    double fr = yOut - xOut - rOut;
-    double bl = yOut - xOut + rOut;
+    double fr = yOut - xOut - rOut + 20;
+    double bl = yOut - xOut + rOut + 20;
     double br = yOut + xOut - rOut;
 
     double maxMag = std::max({std::fabs(fl),
@@ -471,4 +471,224 @@ void Drive_EncoderPID(double targetInchesY,
   }
 
   setDrivePower(0,0,0,0);
+}
+
+
+// =============================
+// DRIVE FORWARD (ODOM-TASK based) PID
+// Uses: odomX/odomY/odomTheta from pros::Task odomTask()
+// Goal: go straight on the start line, auto-correct any sideways drift,
+// and NOT finish to the right (stronger correction near the end).
+// =============================
+
+static inline double sgn(double v) { return (v > 0) - (v < 0); }
+
+// Read average motor position (degrees) for each corner (2 motors per corner)
+static inline double FL_deg() { return 0.5 * (Front_Left_1.get_position()  + Front_Left_2.get_position()); }
+static inline double FR_deg() { return 0.5 * (Front_Right_1.get_position() + Front_Right_2.get_position()); }
+static inline double BL_deg() { return 0.5 * (Back_Left_1.get_position()   + Back_Left_2.get_position()); }
+static inline double BR_deg() { return 0.5 * (Back_Right_1.get_position()  + Back_Right_2.get_position()); }
+
+// =====================================
+// DRIVE STRAIGHT "TO POINT" USING ONLY:
+// - Drive motor encoders (forward + strafe estimate)
+// - IMU rotation + gyro DPS (heading hold, damping)
+// NO odom wheels / odomX / odomY
+// =====================================
+void driveToDistance_EncIMU_XDrive(
+    double targetInches,        // e.g. 20.0
+    double holdHeadingDeg,      // e.g. 0.0
+    int maxDrive,
+    int maxTurn,
+    int timeoutMs
+) {
+  const uint32_t t0 = pros::millis();
+  const int loopMs = 20;
+
+  // ---- Robot constants (EDIT THESE) ----
+  const double wheelDiamIn = 3.25;          // change to your wheel diameter
+  const double gearWheelPerMotor = 1.0;     // wheel rotations per motor rotation (1.0 if direct)
+  const double wheelCirc = M_PI * wheelDiamIn;
+
+  auto degToIn = [&](double motorDeg) {
+    double motorRev = motorDeg / 360.0;
+    double wheelRev = motorRev * gearWheelPerMotor;
+    return wheelRev * wheelCirc;
+  };
+
+  // ---- Gains ----
+  const double kP_y = 10.0;
+  const double kI_y = 0.0;
+  const double kD_y = 30.0;
+
+  const double kP_x = 18.0;
+  const double kD_x = 110.0;
+
+  const double kP_h   = 2.0;   // deg -> power
+  const double kD_dps = 0.12;  // (deg/sec) -> power (gyro damping)
+
+  // ---- Tolerances ----
+  const double posTolIn    = 0.5;
+  const double strafeTolIn = 0.15; // encoder-estimated strafe is noisier than odom wheels
+  const double headTolDeg  = 1.0;
+
+  // ---- Minimum outputs ----
+  const double MIN_FWD = 10.0;
+  const double MIN_STR = 10.0;
+  const double MIN_T   = 7.0;
+
+  // ---- I-zone for forward ----
+  const double iZoneIn = 6.0;
+  const double iLimit  = 30.0;
+
+  // ---- Strafe shaping ----
+  const double xDeadbandIn = 0.05;
+  const double xMaxMin = 35.0;
+  const double xMaxMax = 110.0;
+
+  // ---- Endgame ----
+  const double nearEndIn    = 8.0;
+  const double endBoost     = 1.5;
+  const double endTurnScale = 0.4;
+
+  // ---- Settle ----
+  const int settleReq = 10;
+  int settleCount = 0;
+
+  // ---- State ----
+  resetDriveEncoders();
+
+  double lastEy = 0.0, iEy = 0.0;
+  double lastEx = 0.0;
+
+  int lcdCounter = 0;
+
+  while (true) {
+    const uint32_t now = pros::millis();
+    if ((int)(now - t0) > timeoutMs) break;
+
+    // Read corner motor positions (deg)
+    const double flD = FL_deg();
+    const double frD = FR_deg();
+    const double blD = BL_deg();
+    const double brD = BR_deg();
+
+    // Invert X-drive mix to estimate robot-frame translation:
+    // yDeg = (fl+fr+bl+br)/4
+    // xDeg = (fl-fr-bl+br)/4
+    const double yDeg = (flD + frD + blD + brD) * 0.25;
+    const double xDeg = (flD - frD - blD + brD) * 0.25;
+
+    const double yIn = degToIn(yDeg);  // forward distance estimate
+    const double xIn = degToIn(xDeg);  // strafe distance estimate
+
+    // Errors
+    const double eY = (targetInches - yIn);
+
+    // Strafe drift to cancel (target strafe = 0)
+    // If correction goes the wrong direction, flip sign: const double eX = (-xIn);
+    const double eX = (xIn);
+
+    // Heading error
+    const double curHead = IMU.get_rotation();
+    const double headErr = wrapDeg(holdHeadingDeg - curHead);
+
+    // ✅ FIX: PROS get_gyro_rate() returns a struct (imu_gyro_s_t), use .z for yaw rate
+    pros::imu_gyro_s_t gyro = IMU.get_gyro_rate();
+    const double dps = gyro.z; // deg/sec, yaw rate (+CCW)
+
+    const bool nearEnd = (std::fabs(eY) < nearEndIn);
+
+    // Settle logic
+    const bool posOK = (std::fabs(eY) < posTolIn);
+    const bool strOK = (std::fabs(eX) < strafeTolIn);
+    const bool hdOK  = (std::fabs(headErr) < headTolDeg);
+
+    if (posOK && strOK && hdOK) settleCount++;
+    else settleCount = 0;
+
+    if (settleCount >= settleReq) break;
+
+    // -----------------------------
+    // Forward PID
+    // -----------------------------
+    const double dEy = (eY - lastEy);
+    lastEy = eY;
+
+    if (std::fabs(eY) < iZoneIn) iEy += eY;
+    else iEy = 0.0;
+
+    iEy = clampd(iEy, -iLimit, iLimit);
+
+    double yOut = kP_y * eY + kI_y * iEy + kD_y * dEy;
+    yOut = clampd(yOut, -(double)maxDrive, (double)maxDrive);
+
+    if (std::fabs(eY) > posTolIn && std::fabs(yOut) < MIN_FWD)
+      yOut = sgn(eY) * MIN_FWD;
+
+    // -----------------------------
+    // Strafe PD "snap back"
+    // -----------------------------
+    const double dEx = (eX - lastEx);
+    lastEx = eX;
+
+    double xOut = kP_x * eX + kD_x * dEx;
+
+    if (std::fabs(eX) < xDeadbandIn) xOut = 0.0;
+
+    const double speedFrac = std::fabs(yOut) / std::max(1.0, (double)maxDrive);
+    double xMaxNow = xMaxMin + (xMaxMax - xMaxMin) * speedFrac;
+    if (nearEnd) xMaxNow *= endBoost;
+
+    xOut = clampd(xOut, -xMaxNow, xMaxNow);
+
+    if (std::fabs(eX) > strafeTolIn && std::fabs(xOut) < MIN_STR)
+      xOut = sgn(eX) * MIN_STR;
+
+    // -----------------------------
+    // Heading hold: P on error, D on gyro DPS (damping)
+    // -----------------------------
+    double rOut = (kP_h * headErr) - (kD_dps * dps);
+    rOut = clampd(rOut, -(double)maxTurn, (double)maxTurn);
+
+    if (std::fabs(headErr) > headTolDeg && std::fabs(rOut) < MIN_T)
+      rOut = sgn(headErr) * MIN_T;
+
+    // Reduce turning if strafe correction is large to prevent arcing
+    if (std::fabs(eX) > 1.0) rOut = clampd(rOut, -12.0, 12.0);
+    if (nearEnd && std::fabs(eX) > strafeTolIn) rOut *= endTurnScale;
+
+    // -----------------------------
+    // X-drive mix
+    // -----------------------------
+    double fl = yOut + xOut + rOut;
+    double fr = yOut - xOut - rOut;
+    double bl = yOut - xOut + rOut;
+    double br = yOut + xOut - rOut;
+
+    double maxMag = std::max({std::fabs(fl), std::fabs(fr), std::fabs(bl), std::fabs(br)});
+    if (maxMag > 127.0) {
+      const double sc = 127.0 / maxMag;
+      fl *= sc; fr *= sc; bl *= sc; br *= sc;
+    }
+
+    setDrivePower((int)fl, (int)fr, (int)bl, (int)br);
+
+    // -----------------------------
+    // Debug (~100ms)
+    // -----------------------------
+    if (++lcdCounter >= 5) {
+      lcdCounter = 0;
+      pros::lcd::print(0, "yIn:%.2f eY:%.2f", yIn, eY);
+      pros::lcd::print(1, "xIn:%.2f eX:%.2f", xIn, eX);
+      pros::lcd::print(2, "H:%.1f eH:%.1f", curHead, headErr);
+      pros::lcd::print(3, "y:%.0f x:%.0f r:%.0f", yOut, xOut, rOut);
+      pros::lcd::print(4, "set:%d dps:%.1f", settleCount, dps);
+      pros::lcd::print(5, "t:%dms", (int)(now - t0));
+    }
+
+    pros::delay(loopMs);
+  }
+
+  setDrivePower(0, 0, 0, 0);
 }
