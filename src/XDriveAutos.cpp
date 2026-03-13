@@ -54,29 +54,29 @@ void driveToPoint_XDrive_PID(
   // GAINS
   // =============================
   // Forward approach (robot forward)
-  const double kP_y = 7.0;
-  const double kD_y = 18.0;
+  const double kP_y = 8.0;
+  const double kD_y = 10.0;
 
   // X line lock BASE gains (will be scaled by mode multipliers)
-  const double kP_x = 32.0;
-  const double kD_x = 150.0;
-  const double kI_x = 0.45;
+  const double kP_x = 26.0;
+  const double kD_x = 120.0;
+  const double kI_x = 0.55;
 
   // Heading (deg)
-  const double kP_h = 3.0;
-  const double kD_h = 9.0;
+  const double kP_h = 3;
+  const double kD_h = 10.0;
 
   // =============================
   // TOLERANCES + SETTLE
   // =============================
-  const double posTolIn    = 1.0;
+  const double posTolIn    = 0.5;
   const double headTolDeg  = 1.0;
   const int    settleReq   = 10;
 
   // =============================
   // MIN OUTPUTS
   // =============================
-  const double MIN_XY = 10.0;
+  const double MIN_XY = 12.0;
   const double MIN_T  = 7.0;
 
   // =============================
@@ -100,21 +100,21 @@ void driveToPoint_XDrive_PID(
   // =============================
   // SNAP + HOLD BANDS (this fixes oscillation)
   // =============================
-  const double X_SNAP_IN   = 1.0;   // enter SNAP when |x| > 1"
-  const double X_HOLD_IN   = 0.35;  // return to HOLD when |x| < 0.35"
-  const double X_DEADBAND  = 0.30;  // inside this, treat x as 0 (no chatter)
+  const double X_SNAP_IN   = 0.5;   // enter SNAP when |x| > 1"
+  const double X_HOLD_IN   = 0.25;  // return to HOLD when |x| < 0.35"
+  const double X_DEADBAND  = 0.40;  // inside this, treat x as 0 (no chatter)
 
   // Mode gain multipliers:
-  const double X_SNAP_MUL  = 1.25;  // strong correction in SNAP
-  const double X_HOLD_MUL  = 0.45;  // gentle hold near line (kills hunting)
+  const double X_SNAP_MUL  = 1.1;  // strong correction in SNAP
+  const double X_HOLD_MUL  = 0.4;  // gentle hold near line (kills hunting)
 
   // Kick only when entering SNAP
-  const int    X_KICK_LOOPS = 3;    // 60ms
-  const double X_KICK_PWR   = 10.0; // small kick
+  const int    X_KICK_LOOPS = 2;    // 60ms
+  const double X_KICK_PWR   = 6.0; // small kick
 
   // Near-finish priority (lets Y close)
-  const double Y_CLOSE_IN   = 4.0;
-  const double X_NEAR_SCALE = 0.60;
+  const double Y_CLOSE_IN   = 6.0;
+  const double X_NEAR_SCALE = 0.45;
 
   // =============================
   // STATE

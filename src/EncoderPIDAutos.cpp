@@ -326,7 +326,7 @@ void driveStrafe_EncoderPID(double targetInches,
 
 
 void turnToHeading_IMUPID(double targetDeg, int maxPower, int timeoutMs) {
-  const double Kp = 1.5;
+  const double Kp = 2;
   const double Ki = 0.0;
   const double Kd = 8.0;
 
