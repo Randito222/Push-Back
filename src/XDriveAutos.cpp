@@ -109,8 +109,8 @@ void driveToPoint_XDrive_PID(
   const double X_HOLD_MUL  = 0.4;  // gentle hold near line (kills hunting)
 
   // Kick only when entering SNAP
-  const int    X_KICK_LOOPS = 2;    // 60ms
-  const double X_KICK_PWR   = 6.0; // small kick
+  const int    X_KICK_LOOPS = 1;    // 60ms
+  const double X_KICK_PWR   = 3.0; // small kick
 
   // Near-finish priority (lets Y close)
   const double Y_CLOSE_IN   = 6.0;

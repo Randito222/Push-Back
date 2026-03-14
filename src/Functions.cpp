@@ -202,7 +202,7 @@ bool descoreState = false;    // current descore toggle state
 bool holdingY = false;
 
 uint32_t yPressStart = 0;
-const uint32_t HOLD_TIME_MS = 200;
+const uint32_t HOLD_TIME_MS = 500;
 
 void descoring() {
     bool yPressed = master.get_digital(DIGITAL_Y);
