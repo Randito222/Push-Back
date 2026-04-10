@@ -1,7 +1,7 @@
 {
   "py/object": "pros.conductor.project.Project",
   "py/state": {
-    "project_name": "Push Back",
+    "project_name": "SKILLS",
     "target": "v5",
     "templates": {
       "EZ-Template": {
@@ -425,7 +425,8 @@
     },
     "upload_options": {
       "description": "roboticsisez.com",
-      "after": "run"
+      "after": "run",
+      "slot": 2
     },
     "use_early_access": false
   }

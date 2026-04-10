@@ -145,13 +145,13 @@ void soloAWP(){
 void RightSideAuton(){
 
   FrontIntake.move(127);  // Spin the intake
-  driveToPoint_XDrive_PID(12,15,0,127,127,1300); // Goes to the three balls near the center
+  driveToPoint_XDrive_PID(11,15,0,127,127,1300); // Goes to the three balls near the center
   TongueMech.set_value(1); //Brings the tongue out to hold the balls
 
-  driveToPoint_XDrive_PID(11,30,0,80,80,2100); // Goes foward to intake the balls
+  driveToPoint_XDrive_PID(10,30,0,80,80,2100); // Goes foward to intake the balls
   TongueMech.set_value(0); // Brings the tongue back up
 
-  driveToPoint_XDrive_PID(2, 32, 0, 127, 127, 1000); // Goes to lower goal
+  driveToPoint_XDrive_PID(1, 27, 0, 127, 127, 1000); // Goes to lower goal
   turnToHeading_IMUPID(-45, 127, 500);
   FrontIntake.move(-127); // Spit the balls out into lower goal
   pros::delay(2000);
@@ -164,8 +164,9 @@ void RightSideAuton(){
 
   driveToPoint_XDrive_PID(37, -9, -180, 127, 127, 850); // Goes to match loader
   pros::delay(1000); //waits for the match loader to load the balls
-
-  driveToPoint_XDrive_PID(38,33, -180, 127, 127, 1600); // Goes to long goal
+  
+  driveToPoint_XDrive_PID(36,20, -180, 127, 127, 1000); // Goes to long goal
+  driveToPoint_XDrive_PID(36,33, -180, 127, 127, 1000); // Goes to long goal
 
   FrontIntake.move(-127);
   Arm.move_absolute(-700, 200);
@@ -189,7 +190,7 @@ void LeftSideAuton(){
   driveToPoint_XDrive_PID(-11,25,0,80,80,1200); // Goes foward to intake the balls
   TongueMech.set_value(0); // Brings the tongue back up
 
-  driveToPoint_XDrive_PID(0, 34, 0, 127, 127, 1000); // Goes to lower goal
+  driveToPoint_XDrive_PID(0, 41, 0, 127, 127, 1000); // Goes to lower goal
   
   turnToHeading_IMUPID(-145, 90, 1000);
   IntakeLift.set_value(1);
@@ -202,21 +203,26 @@ void LeftSideAuton(){
 
   turnToHeading_IMUPID(-180, 90, 300);
 
-  driveToPoint_XDrive_PID(-15, 15, -180, 127, 127, 2000);
+  driveToPoint_XDrive_PID(-15, 15, -180, 127, 127,1800);
   TongueMech.set_value(1); //Brings the tongue out to hold the balls
 
-  driveToPoint_XDrive_PID(-36, 15, -180, 127, 127, 2000); // Goes to lower goal
+  driveToPoint_XDrive_PID(-36, 15, -180, 127, 127, 1200); // Goes to lower goal
   FrontIntake.move(127);
 
-  driveToPoint_XDrive_PID(-36, 4, -180, 127, 127, 2000); // Goes to lower goal
+  driveToPoint_XDrive_PID(-35, 0, -180, 127, 127, 2000); // Goes to lower goal
   pros::delay(1000);
-  driveToPoint_XDrive_PID(-36, 36, -180, 127, 127, 2000); // Goes to lower goal
+  driveToPoint_XDrive_PID(-35, 36, -180, 127, 127, 2000); // Goes to lower goal
 
   FrontIntake.move(-127);
   Arm.move_absolute(-700, 200);
   pros::delay(1000);
   Arm.move_absolute(0, 200);
 
+  driveToPoint_XDrive_PID(-35, 24, -180, 127, 127, 2000); // Goes to lower goal
+  pros::delay(1000);
+  driveToPoint_XDrive_PID(-31, 24, -180, 127, 127, 2000);
+  Descore.set_value(1);
+  driveToPoint_XDrive_PID(-31, 48, -180, 127, 127, 2000);
 }
 
 void RightElimsAuton(){
@@ -247,12 +253,12 @@ void RightElimsAuton(){
 
 void LeftElimsAuton(){
   FrontIntake.move(127);  // Spin the intake
-  driveToPoint_XDrive_PID(-34,0,0,127,127,1300); // Goes to the three balls near the center
+  driveToPoint_XDrive_PID(-35.5,0,0,127,127,1300); // Goes to the three balls near the center
   TongueMech.set_value(1); //Brings the tongue out to hold the balls
   turnToHeading_IMUPID(180, 90, 1000);
-  driveToPoint_XDrive_PID(-34,-14,180,127,127,1300); // Goes to the three balls near the center
+  driveToPoint_XDrive_PID(-35.5,-14,180,127,127,1300); // Goes to the three balls near the center
   pros::delay(1000);
-  driveToPoint_XDrive_PID(-35,34,180,127,127,2000); // Goes to the three balls near the center
+  driveToPoint_XDrive_PID(-38,34,180,57,127,5000); // Goes to the three balls near the center
   TongueMech.set_value(0); // Brings the tongue back up
 
   FrontIntake.move(-127);

@@ -118,6 +118,9 @@ void disabled() {
  */
 void competition_initialize() {
   // . . .
+  fcZeroRad = 0.0;
+  lastFC = true;
+
 }
 
 /**
@@ -253,7 +256,7 @@ void opcontrol() {
 
   while (true) {
 
-    //ArmAction();
+    // ArmAction();
     IntakeLiftToggle();
     MatchLoading();
     descoring();

@@ -62,3 +62,4 @@ inline pros::adi::DigitalOut TongueMech('B');
 inline pros::adi::DigitalOut Descore('D');
 inline pros::adi::DigitalOut DescoreLift('C');
 inline pros::adi::DigitalOut IntakeLift('A');
+inline pros::adi::DigitalOut HoodLift('E');
